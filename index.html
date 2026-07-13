@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>Ledger — Debt &amp; Receivables Dashboard</title>
+<script>
+  // The Tailwind Play CDN and in-browser Babel transformer both print a
+  // one-line "don't use this in production" notice on load. That notice is
+  // expected and harmless in this single-file, no-build-step app (there is no
+  // production bundler to hand off to), so we filter just those two known
+  // messages here — every other console.warn/error still prints normally.
+  (function () {
+    const KNOWN_NOISY = [
+      "cdn.tailwindcss.com should not be used in production",
+      "You are using the in-browser Babel transformer",
+    ];
+    const wrap = (fn) => (...args) => {
+      const text = args.map((a) => (typeof a === "string" ? a : "")).join(" ");
+      if (KNOWN_NOISY.some((needle) => text.includes(needle))) return;
+      fn.apply(console, args);
+    };
+    console.warn = wrap(console.warn.bind(console));
+    console.error = wrap(console.error.bind(console));
+  })();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#080b11;
+    --bg-vignette: radial-gradient(circle at 50% -10%, #0f1622 0%, #080b11 55%);
+    --surface:#111827;
+    --surface-raised:#161f30;
+    --surface-hover:#1b2538;
+    --border:#232d40;
+    --border-soft:#1a2334;
+    --text-primary:#e9edf5;
+    --text-muted:#8895ab;
+    --text-dim:#5b6980;
+    --emerald:#34d399;
+    --emerald-dim:#0f3d30;
+    --azure:#3b9eff;
+    --azure-dim:#0f2c47;
+    --amber:#fbbf24;
+    --amber-dim:#3a2c0d;
+    --danger:#fb7185;
+    --danger-dim:#3a1520;
+    --violet:#a78bfa;
+  }
+  *{box-sizing:border-box;}
+  html,body{background:var(--bg-base);}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    color:var(--text-primary);
+    background:var(--bg-vignette);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .font-display{font-family:'Space Grotesk',sans-serif;}
+  .font-mono{font-family:'JetBrains Mono',monospace;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#232d40;border-radius:8px;}
+  ::selection{background:rgba(52,211,153,0.3);}
+
+  @keyframes fadeSlideIn{
+    from{opacity:0; transform:translateY(10px) scale(0.98);}
+    to{opacity:1; transform:translateY(0) scale(1);}
+  }
+  .anim-in{animation:fadeSlideIn 0.42s cubic-bezier(0.16,1,0.3,1) both;}
+
+  @keyframes shake{
+    10%,90%{transform:translateX(-1px);}
+    20%,80%{transform:translateX(2px);}
+    30%,50%,70%{transform:translateX(-4px);}
+    40%,60%{transform:translateX(4px);}
+  }
+  .anim-shake{animation:shake 0.5s cubic-bezier(.36,.07,.19,.97) both;}
+
+  @keyframes pulseRing{
+    0%,100%{box-shadow:0 0 0 0 var(--ring-color, rgba(52,211,153,0.55));}
+    50%{box-shadow:0 0 0 6px var(--ring-color-transparent, rgba(52,211,153,0));}
+  }
+  .pulse-dot{animation:pulseRing 2.2s ease-in-out infinite;}
+
+  @keyframes riseIn{
+    from{opacity:0; transform:translateY(18px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  .anim-rise{animation:riseIn 0.5s cubic-bezier(0.16,1,0.3,1) both;}
+
+  @keyframes floatKey{
+    0%,100%{transform:translateY(0px);}
+    50%{transform:translateY(-6px);}
+  }
+  .float-slow{animation:floatKey 5s ease-in-out infinite;}
+
+  .glass{
+    background:linear-gradient(180deg, rgba(22,31,48,0.85) 0%, rgba(17,24,39,0.85) 100%);
+    backdrop-filter:blur(14px);
+    border:1px solid var(--border-soft);
+  }
+
+  .num-input::-webkit-outer-spin-button,
+  .num-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .num-input{-moz-appearance:textfield;}
+
+  .slider-track{
+    -webkit-appearance:none;
+    appearance:none;
+    height:6px;
+    border-radius:999px;
+    background:#1c2740;
+    outline:none;
+  }
+  .slider-track::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:18px;height:18px;border-radius:50%;
+    background:var(--emerald);
+    box-shadow:0 0 0 4px rgba(52,211,153,0.18), 0 2px 6px rgba(0,0,0,0.4);
+    cursor:pointer;
+    border:2px solid #071310;
+    transition:transform 0.15s ease;
+  }
+  .slider-track::-webkit-slider-thumb:hover{transform:scale(1.12);}
+  .slider-track::-moz-range-thumb{
+    width:18px;height:18px;border-radius:50%;
+    background:var(--emerald); border:2px solid #071310; cursor:pointer;
+  }
+
+  .pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid #3a4863;transition:all 0.18s ease;}
+  .pin-dot.filled{background:var(--emerald);border-color:var(--emerald);box-shadow:0 0 10px rgba(52,211,153,0.6);}
+
+  .keypad-btn{ transition:all 0.12s ease; font-family:'Space Grotesk',sans-serif; }
+  .keypad-btn:active{transform:scale(0.92); background:var(--surface-hover);}
+
+  .segbtn{ transition: color 0.35s ease; }
+  .tab-btn{ transition: all 0.18s ease; }
+
+  .item-card{ transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
+  .item-card:hover{ transform:translateY(-2px); border-color:#2c3a54; box-shadow:0 8px 24px -8px rgba(0,0,0,0.5); }
+
+  .gantt-bar{ transition: width 1.1s cubic-bezier(0.16,1,0.3,1); }
+  .progress-bar-fill{ transition: width 0.9s cubic-bezier(0.16,1,0.3,1); }
+
+  .modal-backdrop{ animation: fadeIn 0.2s ease both; }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  .modal-panel{ animation: fadeSlideIn 0.28s cubic-bezier(0.16,1,0.3,1) both; }
+
+  .icon-btn{ transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease; }
+  .icon-btn:active{ transform:scale(0.9); }
+
+  .focus-ring:focus-visible{ outline:2px solid var(--emerald); outline-offset:2px; }
+
+  .avatar{
+    border-radius:9999px; overflow:hidden; display:flex; align-items:center; justify-content:center;
+    background:var(--surface-raised); border:1px solid var(--border-soft); flex-shrink:0;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; color:var(--text-muted);
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; }
+
+  .dropzone{
+    border:1.5px dashed var(--border); border-radius:20px; transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .dropzone.drag-over{ border-color:var(--emerald); background:rgba(52,211,153,0.06); }
+
+  select.styled-select{
+    appearance:none; -webkit-appearance:none; background-image:none;
+  }
+  .no-scrollbar{ scrollbar-width:none; -ms-overflow-style:none; }
+  .no-scrollbar::-webkit-scrollbar{ display:none; }
+
+  .tooltip-anchor{ position:relative; display:inline-flex; }
+  .tooltip-bubble{
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%) translateY(4px);
+    background:#0a0e15;
+    color:#f4f7fb;
+    font-family:'Inter',sans-serif;
+    font-size:11.5px;
+    font-weight:500;
+    line-height:1.35;
+    padding:7px 11px;
+    border-radius:9px;
+    width:max-content;
+    max-width:220px;
+    text-align:center;
+    white-space:normal;
+    box-shadow:0 10px 28px -6px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07);
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
+    z-index:90;
+  }
+  .tooltip-bubble::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    width:8px;height:8px;
+    background:#0a0e15;
+    border-radius:2px;
+  }
+  .tooltip-top{ bottom:calc(100% + 9px); }
+  .tooltip-top::after{ bottom:-3px; clip-path:polygon(0 0,100% 0,50% 100%); }
+  .tooltip-bottom{ top:calc(100% + 9px); }
+  .tooltip-bottom::after{ top:-3px; clip-path:polygon(50% 0,0 100%,100% 100%); }
+  .tooltip-anchor:hover .tooltip-bubble,
+  .tooltip-anchor:focus-within .tooltip-bubble{
+    opacity:1;
+    visibility:visible;
+    transform:translateX(-50%) translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+/* ============================= ICON SET ============================= */
+const ICON_PATHS = {
+  lock: <><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
+  "shield-check": <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></>,
+  delete: <><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/><path d="m12 9 6 6M18 9l-6 6"/></>,
+  x: <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+  plus: <><path d="M12 5v14"/><path d="M5 12h14"/></>,
+  "trash-2": <><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6M14 11v6"/></>,
+  wallet: <><path d="M20 12V8a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6"/><circle cx="17" cy="14" r="1"/></>,
+  "trending-down": <><path d="m23 18-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/></>,
+  "trending-up": <><path d="m23 6-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></>,
+  "calendar-check": <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></>,
+  "triangle-alert": <><path d="m10.29 3.86-8.18 14.14A2 2 0 0 0 3.86 21h16.28a2 2 0 0 0 1.75-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></>,
+  snowflake: <><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93 4.93 19.07"/><path d="m12 6-2 2M12 6l2 2M12 18l-2-2M12 18l2-2M6 12l2-2M6 12l2 2M18 12l-2-2M18 12l-2 2"/></>,
+  "mountain-snow": <><path d="m8 3 4 8 5-5 5 15H2L8 3Z"/><path d="M4.5 15.5 8 10l3 4"/></>,
+  rocket: <><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09Z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2Z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></>,
+  landmark: <><path d="M3 22h18M6 18v-8M10 18v-8M14 18v-8M18 18v-8M2 10l10-6 10 6"/></>,
+  "party-popper": <><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01M22 8h.01M15 2h.01M22 20h.01M22 3l-1.3 1.3M17.6 6.4l-1 1M11 3v1M13 12l3-3"/><path d="M4 3s2 2 2 5-2 5-2 5"/></>,
+  flag: <><path d="M4 22V4"/><path d="M4 4h14l-2 4 2 4H4"/></>,
+  search: <><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></>,
+  "sliders-horizontal": <><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="7" cy="18" r="2"/></>,
+  "arrow-up-down": <><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></>,
+  users: <><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+  image: <><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></>,
+  upload: <><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></>,
+  download: <><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></>,
+  cloud: <><path d="M17.5 19H9a7 7 0 1 1 6.71-9h.79a4.5 4.5 0 1 1 0 9Z"/></>,
+  "file-spreadsheet": <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h2M8 17h2M14 13h2M14 17h2"/></>,
+  clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></>,
+  "alarm-clock": <><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 3 5M19 3l2 2"/></>,
+  "bar-chart-3": <><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></>,
+  camera: <><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></>,
+  "check-circle": <><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></>,
+  archive: <><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></>,
+  "arrow-left": <><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>,
+  "chevron-down": <><path d="m6 9 6 6 6-6"/></>,
+  "chevron-right": <><path d="m9 18 6-6-6-6"/></>,
+  banknote: <><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></>,
+  receipt: <><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></>,
+  sparkles: <><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="m5.6 5.6 2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></>,
+  "user-round": <><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></>,
+  "minus-circle": <><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></>,
+  "plus-circle": <><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></>,
+  menu: <><path d="M4 6h16M4 12h16M4 18h16"/></>,
+  inbox: <><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></>,
+  "badge-check": <><path d="M12 2l2.4 1.4 2.8-.3 1.1 2.6 2.6 1.1-.3 2.8L22 12l-1.4 2.4.3 2.8-2.6 1.1-1.1 2.6-2.8-.3L12 22l-2.4-1.4-2.8.3-1.1-2.6-2.6-1.1.3-2.8L2 12l1.4-2.4-.3-2.8 2.6-1.1 1.1-2.6 2.8.3Z"/><path d="m9 12 2 2 4-4"/></>,
+  pencil: <><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>,
+  paperclip: <><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></>,
+};
+
+function Icon({ name, size = 18, className = "", style = {} }) {
+  const inner = ICON_PATHS[name];
+  if (!inner) return null;
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}
+      style={{ display: "inline-block", flexShrink: 0, ...style }}>
+      {inner}
+    </svg>
+  );
+}
+
+/* ============================= TOOLTIP ============================= */
+// Pure CSS hover/focus tooltip: fades + slides in via CSS transitions only,
+// no JS state, so it appears/disappears immediately as the mouse enters/leaves.
+function Tooltip({ label, position = "top", className = "", children }) {
+  if (!label) return children;
+  return (
+    <span className={`tooltip-anchor ${className}`}>
+      {children}
+      <span className={`tooltip-bubble tooltip-${position}`} role="tooltip">{label}</span>
+    </span>
+  );
+}
+
+/* ============================= CRYPTO HELPERS ============================= */
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+function toB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function fromB64(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+async function deriveKey(pin, saltB64) {
+  const salt = new Uint8Array(fromB64(saltB64));
+  const baseKey = await crypto.subtle.importKey("raw", enc.encode(pin), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 210000, hash: "SHA-256" },
+    baseKey, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+  );
+}
+async function encryptJSON(key, obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = enc.encode(JSON.stringify(obj));
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+  return { iv: toB64(iv), cipher: toB64(cipher) };
+}
+async function decryptJSON(key, ivB64, cipherB64) {
+  const iv = new Uint8Array(fromB64(ivB64));
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, fromB64(cipherB64));
+  return JSON.parse(dec.decode(plain));
+}
+function randomSaltB64() { return toB64(crypto.getRandomValues(new Uint8Array(16)).buffer); }
+
+const STORAGE_KEY = "ledger_debtdash_v2";
+
+/* ============================= UTILS ============================= */
+const uid = (p = "id") => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+const fmtMoney = (n) => {
+  const v = Number(n) || 0;
+  return v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+};
+const fmtMoney2 = (n) => {
+  const v = Number(n) || 0;
+  return v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+};
+const monthsFromNowLabel = (months) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+};
+const fmtDate = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+const fmtDateTime = (iso) => {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const daysUntil = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso + "T00:00:00");
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  return Math.round((d - now) / 86400000);
+};
+
+function resizeImageFile(file, maxSize = 160, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } }
+        else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function csvEscape(val) {
+  const s = val === null || val === undefined ? "" : String(val);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+function toCSV(rows, headers) {
+  const head = headers.map((h) => csvEscape(h.label)).join(",");
+  const body = rows.map((r) => headers.map((h) => csvEscape(h.get(r))).join(",")).join("\n");
+  return head + "\n" + body;
+}
+
+/* ============================= DATA MIGRATION ============================= */
+function migrateData(raw) {
+  if (raw && raw.items) return raw;
+  if (raw && raw.debts) {
+    const items = raw.debts.map((d) => ({
+      id: d.id, type: "debt", name: d.name, contact: "", contactImage: null,
+      originalAmount: d.balance, balance: d.balance, rate: d.rate || 0,
+      minPayment: d.minPayment || 0, dueDate: "", reminderDays: 3, notes: "",
+      status: "active", createdAt: new Date().toISOString(), settledAt: null, history: [],
+    }));
+    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche" };
+  }
+  return { items: [], extraBudget: 200, strategy: "avalanche" };
+}
+
+/* ============================= PAYOFF SIMULATION (debts only) ============================= */
+function simulatePayoff(items, extraBudget, strategy) {
+  const active = items.filter((d) => d.type === "debt" && d.status === "active" && d.balance > 0);
+  if (active.length === 0) {
+    return { months: 0, totalInterest: 0, payoffMonth: {}, order: [], insufficient: false };
+  }
+  const order = [...active].sort((a, b) => strategy === "snowball" ? a.balance - b.balance : b.rate - a.rate);
+  const orderIds = order.map((d) => d.id);
+  let sim = {}; active.forEach((d) => { sim[d.id] = d.balance; });
+  const minSum = active.reduce((s, d) => s + d.minPayment, 0);
+  let months = 0, totalInterest = 0;
+  const payoffMonth = {};
+  const MAX_MONTHS = 720;
+  let insufficient = false;
+  while (Object.values(sim).some((b) => b > 0.005) && months < MAX_MONTHS) {
+    months++;
+    active.forEach((d) => {
+      if (sim[d.id] > 0.005) { const interest = sim[d.id] * (d.rate / 100 / 12); sim[d.id] += interest; totalInterest += interest; }
+    });
+    let pool = extraBudget;
+    active.forEach((d) => { if (sim[d.id] > 0.005) { const pay = Math.min(d.minPayment, sim[d.id]); sim[d.id] -= pay; } });
+    for (const id of orderIds) {
+      if (pool <= 0) break;
+      if (sim[id] > 0.005) { const pay = Math.min(pool, sim[id]); sim[id] -= pay; pool -= pay; }
+    }
+    active.forEach((d) => { if (sim[d.id] <= 0.005 && payoffMonth[d.id] === undefined) payoffMonth[d.id] = months; });
+    if (months === MAX_MONTHS - 1) insufficient = true;
+  }
+  return { months, totalInterest, payoffMonth, order: orderIds, insufficient };
+}
+
+/* ============================= SEARCH / FILTER / SORT ============================= */
+function filterSortItems(items, { query, sortBy, sortDir, statusFilter }) {
+  let out = items;
+  if (statusFilter && statusFilter !== "all") out = out.filter((i) => i.status === statusFilter);
+  if (query && query.trim()) {
+    const q = query.trim().toLowerCase();
+    out = out.filter((i) => {
+      const hay = [i.name, i.contact, i.notes, String(i.balance), String(i.rate), i.dueDate]
+        .filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  const dir = sortDir === "asc" ? 1 : -1;
+  out = [...out].sort((a, b) => {
+    switch (sortBy) {
+      case "amount": return (a.balance - b.balance) * dir;
+      case "dueDate": {
+        const av = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+        const bv = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+        return (av - bv) * dir;
+      }
+      case "dateAdded": return (new Date(a.createdAt) - new Date(b.createdAt)) * dir;
+      case "name":
+      default: return a.name.localeCompare(b.name) * dir;
+    }
+  });
+  return out;
+}
+
+function progressPct(item) {
+  const orig = Math.max(item.originalAmount || 0, item.balance || 0, 0.01);
+  return Math.max(0, Math.min(100, (1 - item.balance / orig) * 100));
+}
+
+function contactSummaries(items) {
+  const map = new Map();
+  items.forEach((it) => {
+    const key = (it.contact || "Unspecified").trim() || "Unspecified";
+    if (!map.has(key)) map.set(key, { name: key, image: null, debtTotal: 0, receivableTotal: 0, items: [] });
+    const c = map.get(key);
+    if (it.status === "active") {
+      if (it.type === "debt") c.debtTotal += it.balance; else c.receivableTotal += it.balance;
+    }
+    if (it.contactImage && !c.image) c.image = it.contactImage;
+    c.items.push(it);
+  });
+  return [...map.values()].sort((a, b) => (b.debtTotal + b.receivableTotal) - (a.debtTotal + a.receivableTotal));
+}
+
+/* ============================= LOCK SCREEN ============================= */
+function PinPad({ onDigit, onBack }) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
+  return (
+    <div className="grid grid-cols-3 gap-3 w-full max-w-[280px] mx-auto">
+      {keys.map((k, i) =>
+        k === "" ? (<div key={i}></div>) :
+        k === "back" ? (
+          <button key={i} onClick={onBack} className="keypad-btn h-16 rounded-2xl flex items-center justify-center text-slate-300 hover:bg-[var(--surface-hover)] focus-ring" aria-label="Backspace">
+            <Icon name="delete" size={20} />
+          </button>
+        ) : (
+          <button key={i} onClick={() => onDigit(k)} className="keypad-btn h-16 rounded-2xl text-2xl font-display font-semibold bg-[var(--surface)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] focus-ring">
+            {k}
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+function LockScreen({ mode, onSubmitPin, error }) {
+  const [pin, setPin] = useState("");
+  const [shake, setShake] = useState(false);
+  const maxLen = 6;
+
+  useEffect(() => { setPin(""); }, [mode]);
+  useEffect(() => {
+    if (error) { setShake(true); const t = setTimeout(() => setShake(false), 500); return () => clearTimeout(t); }
+  }, [error]);
+
+  const handleDigit = (d) => { if (pin.length < maxLen) setPin(pin + d); };
+  const handleBack = () => setPin((p) => p.slice(0, -1));
+  const handleSubmit = () => { if (pin.length >= 4) onSubmitPin(pin); };
+
+  const titles = {
+    "setup-create": ["Create your PIN", "Choose a 4–6 digit PIN to encrypt your data on this device."],
+    "setup-confirm": ["Confirm your PIN", "Enter it once more to lock it in."],
+    unlock: ["Welcome back", "Enter your PIN to unlock your dashboard."],
+  };
+  const [title, sub] = titles[mode];
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow">
+            <Icon name={mode === "unlock" ? "lock" : "shield-check"} size={28} className="text-[var(--emerald)]" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-center">{title}</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[280px]">{sub}</p>
+        </div>
+        <div className={`glass rounded-3xl p-8 ${shake ? "anim-shake" : ""}`}>
+          <div className="flex items-center justify-center gap-3 mb-8 h-4">
+            {Array.from({ length: Math.max(pin.length, 4) }).map((_, i) => (
+              <div key={i} className={`pin-dot ${i < pin.length ? "filled" : ""}`}></div>
+            ))}
+          </div>
+          {error && <p className="text-[var(--danger)] text-xs text-center -mt-5 mb-5 font-medium">{error}</p>}
+          <PinPad onDigit={handleDigit} onBack={handleBack} />
+          <button onClick={handleSubmit} disabled={pin.length < 4}
+            className="w-full mt-6 h-12 rounded-2xl font-display font-semibold text-[15px] transition-all focus-ring disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{ background: pin.length >= 4 ? "var(--emerald)" : "var(--surface)", color: pin.length >= 4 ? "#06231a" : "var(--text-dim)" }}>
+            {mode === "unlock" ? "Unlock" : "Continue"}
+          </button>
+        </div>
+        <p className="text-center text-[var(--text-dim)] text-xs mt-6">Encrypted locally with AES-GCM. Nothing leaves this device.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= SHARED UI BITS ============================= */
+function MetricCard({ icon, label, value, sub, accent, delay = 0, tip }) {
+  const accentMap = {
+    emerald: { bg: "var(--emerald-dim)", border: "#1c4f3c", text: "var(--emerald)" },
+    azure: { bg: "var(--azure-dim)", border: "#1c3a5c", text: "var(--azure)" },
+    amber: { bg: "var(--amber-dim)", border: "#5c451a", text: "var(--amber)" },
+    violet: { bg: "#241b3d", border: "#3a2d5c", text: "var(--violet)" },
+  };
+  const a = accentMap[accent];
+  return (
+    <div className="glass rounded-3xl p-5 sm:p-6 anim-in" style={{ animationDelay: `${delay}ms` }}>
+      <div className="flex items-center justify-between mb-4">
+        <Tooltip label={tip} position="bottom">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: a.bg, border: `1px solid ${a.border}` }}>
+            <Icon name={icon} size={18} style={{ color: a.text }} />
+          </div>
+        </Tooltip>
+        <span className="text-[11px] uppercase tracking-widest text-[var(--text-dim)] font-medium">{label}</span>
+      </div>
+      <div className="font-mono text-3xl sm:text-[32px] font-semibold tracking-tight leading-none">{value}</div>
+      {sub && <div className="text-[13px] text-[var(--text-muted)] mt-2">{sub}</div>}
+    </div>
+  );
+}
+
+function Avatar({ image, name, size = 36 }) {
+  const initials = (name || "?").trim().slice(0, 2).toUpperCase();
+  return (
+    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.36 }}>
+      {image ? <img src={image} alt={name} /> : initials}
+    </div>
+  );
+}
+
+function DueBadge({ item }) {
+  if (!item.dueDate) return null;
+  const d = daysUntil(item.dueDate);
+  let color = "var(--text-dim)", bg = "transparent", label = fmtDate(item.dueDate);
+  if (d < 0) { color = "var(--danger)"; bg = "var(--danger-dim)"; label = `${Math.abs(d)}d overdue`; }
+  else if (d <= (item.reminderDays ?? 3)) { color = "var(--amber)"; bg = "var(--amber-dim)"; label = d === 0 ? "Due today" : `Due in ${d}d`; }
+  else { label = fmtDate(item.dueDate); }
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ color, background: bg, border: `1px solid ${color}33` }}>
+      <Icon name="clock" size={11} /> {label}
+    </span>
+  );
+}
+
+/* ============================= RECEIPT BADGE / VIEWER ============================= */
+function ReceiptBadge({ receipt }) {
+  const [open, setOpen] = useState(false);
+  if (!receipt) return null;
+  return (
+    <>
+      <Tooltip label="View the attached receipt" position="top">
+        <button
+          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+          className="icon-btn inline-flex items-center justify-center w-6 h-6 rounded-lg text-[var(--text-dim)] hover:text-[var(--emerald)] hover:bg-[var(--surface-hover)]"
+          aria-label="View receipt"
+        >
+          <Icon name="paperclip" size={13} />
+        </button>
+      </Tooltip>
+      {open && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.85)" }} onClick={(e) => { e.stopPropagation(); setOpen(false); }}>
+          <div className="modal-panel glass rounded-2xl p-4 max-w-lg w-full max-h-[85vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <span className="text-sm font-medium truncate">{receipt.name || "Receipt"}</span>
+              <button onClick={() => setOpen(false)} className="icon-btn w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] shrink-0"><Icon name="x" size={16} /></button>
+            </div>
+            {receipt.type === "pdf" ? (
+              <embed src={receipt.dataUrl} type="application/pdf" className="w-full h-[65vh] rounded-lg bg-white" />
+            ) : (
+              <img src={receipt.dataUrl} alt={receipt.name || "Receipt"} className="w-full h-auto rounded-lg" />
+            )}
+            <a href={receipt.dataUrl} download={receipt.name || "receipt"} className="inline-flex items-center gap-1.5 mt-3 text-[12px] font-medium text-[var(--emerald)] hover:underline">
+              <Icon name="download" size={13} /> Download original
+            </a>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function EmptyState({ icon = "landmark", title, sub, cta, onCta }) {
+  return (
+    <div className="glass rounded-3xl p-10 sm:p-14 text-center anim-in">
+      <div className="w-14 h-14 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mx-auto mb-5">
+        <Icon name={icon} size={24} className="text-[var(--emerald)]" />
+      </div>
+      <h3 className="font-display text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">{sub}</p>
+      {cta && (
+        <button onClick={onCta} className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-display font-semibold text-sm focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+          <Icon name="plus" size={16} /> {cta}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============================= TOOLBAR (search/sort/filter) ============================= */
+function Toolbar({ query, setQuery, sortBy, setSortBy, sortDir, setSortDir, statusFilter, setStatusFilter, placeholder }) {
+  return (
+    <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <Tooltip label="Search across name, contact, notes, and amount." position="bottom" className="flex-1">
+        <div className="relative flex-1 w-full">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)]"><Icon name="search" size={16} /></span>
+          <input
+            value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder={placeholder || "Search by name, contact, note, amount…"}
+            className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-10 pr-3 py-2.5 text-sm focus-ring focus:border-[var(--emerald)]"
+          />
+        </div>
+      </Tooltip>
+      <div className="flex gap-2">
+        <Tooltip label="Order the list by name, amount, due date, or when it was added." position="bottom">
+          <div className="relative">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+              className="styled-select bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-9 pr-8 py-2.5 text-sm focus-ring cursor-pointer">
+              <option value="name">Name</option>
+              <option value="amount">Amount</option>
+              <option value="dueDate">Due date</option>
+              <option value="dateAdded">Date added</option>
+            </select>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none"><Icon name="arrow-up-down" size={14} /></span>
+          </div>
+        </Tooltip>
+        <Tooltip label="Flip between ascending and descending order." position="bottom">
+          <button onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")}
+            className="icon-btn h-full px-3 rounded-xl border border-[var(--border-soft)] bg-[var(--surface)] hover:bg-[var(--surface-hover)] focus-ring text-[var(--text-muted)]">
+            <Icon name="arrow-up-down" size={15} />
+          </button>
+        </Tooltip>
+        <Tooltip label="Show only active entries, only settled ones, or everything." position="bottom">
+          <div className="relative">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+              className="styled-select bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-9 pr-8 py-2.5 text-sm focus-ring cursor-pointer">
+              <option value="active">Active</option>
+              <option value="settled">Settled</option>
+              <option value="all">All</option>
+            </select>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none"><Icon name="sliders-horizontal" size={14} /></span>
+          </div>
+        </Tooltip>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= ITEM CARD ============================= */
+function ItemCard({ item, rank, accentColor, onOpen, delay }) {
+  const pct = progressPct(item);
+  const isDebt = item.type === "debt";
+  return (
+    <div className="item-card glass rounded-2xl p-4 sm:p-5 cursor-pointer anim-in" style={{ animationDelay: `${delay}ms` }} onClick={() => onOpen(item)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar image={item.contactImage} name={item.contact || item.name} size={38} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-display font-semibold text-[15px] truncate">{item.name}</span>
+              {rank && (
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                  style={{ background: accentColor.dim, color: accentColor.text, border: `1px solid ${accentColor.border}` }}>#{rank}</span>
+              )}
+            </div>
+            <div className="text-[12px] text-[var(--text-dim)] mt-0.5 truncate">
+              {item.contact ? `${item.contact} · ` : ""}{isDebt ? `${item.rate}% APR` : "owed to you"}{item.minPayment ? ` · ${fmtMoney(item.minPayment)}/mo` : ""}
+            </div>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="font-mono text-lg font-semibold" style={{ color: isDebt ? "var(--text-primary)" : "var(--emerald)" }}>{fmtMoney(item.balance)}</div>
+          <div className="text-[11px] text-[var(--text-dim)]">{item.status === "settled" ? "settled" : "balance"}</div>
+        </div>
+      </div>
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[11px] text-[var(--text-dim)] mb-1.5">
+          <span>{Math.round(pct)}% paid off</span>
+          {item.dueDate && <DueBadge item={item} />}
+        </div>
+        <div className="h-1.5 rounded-full bg-[#1c2740] overflow-hidden">
+          <div className="progress-bar-fill h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${accentColor.text}88, ${accentColor.text})` }}></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= TRANSACTION MODAL (payment / charge) ============================= */
+function TransactionModal({ item, onClose, onApply }) {
+  const [kind, setKind] = useState("payment");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(todayISO());
+  const [note, setNote] = useState("");
+  const [receipt, setReceipt] = useState(null); // { name, type: 'image'|'pdf', dataUrl }
+  const [receiptBusy, setReceiptBusy] = useState(false);
+  const receiptRef = useRef(null);
+  const valid = Number(amount) > 0;
+
+  const verb = item.type === "debt"
+    ? (kind === "payment" ? "Log a payment" : "Add a charge")
+    : (kind === "payment" ? "Log money received" : "Lend more money");
+
+  const handleReceiptFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { alert("That file is a bit large — please choose one under 4MB."); return; }
+    setReceiptBusy(true);
+    try {
+      if (file.type.startsWith("image/")) {
+        const dataUrl = await resizeImageFile(file, 1000, 0.8);
+        setReceipt({ name: file.name, type: "image", dataUrl });
+      } else if (file.type === "application/pdf") {
+        const dataUrl = await fileToDataURL(file);
+        setReceipt({ name: file.name, type: "pdf", dataUrl });
+      } else {
+        alert("Please upload a photo or PDF of your receipt.");
+      }
+    } catch (err) { /* ignore */ }
+    setReceiptBusy(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-lg font-semibold">{verb}</h2>
+          <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
+        </div>
+        <div className="glass rounded-2xl p-1 grid grid-cols-2 mb-5">
+          <button onClick={() => setKind("payment")} className={`py-2.5 rounded-xl text-sm font-medium font-display transition-all ${kind === "payment" ? "" : "text-[var(--text-muted)]"}`}
+            style={{ background: kind === "payment" ? "var(--emerald-dim)" : "transparent", color: kind === "payment" ? "var(--emerald)" : undefined, border: kind === "payment" ? "1px solid #1c4f3c" : "1px solid transparent" }}>
+            <Icon name="minus-circle" size={14} className="inline mr-1.5 -mt-0.5" />{item.type === "debt" ? "Payment" : "Received"}
+          </button>
+          <button onClick={() => setKind("charge")} className={`py-2.5 rounded-xl text-sm font-medium font-display transition-all ${kind === "charge" ? "" : "text-[var(--text-muted)]"}`}
+            style={{ background: kind === "charge" ? "var(--amber-dim)" : "transparent", color: kind === "charge" ? "var(--amber)" : undefined, border: kind === "charge" ? "1px solid #5c451a" : "1px solid transparent" }}>
+            <Icon name="plus-circle" size={14} className="inline mr-1.5 -mt-0.5" />{item.type === "debt" ? "New charge" : "Lend more"}
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Amount</label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+              <input autoFocus type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
+                className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Date</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
+          </div>
+          <div>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Note (optional)</label>
+            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. paid via bank transfer"
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
+          </div>
+          <div>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Receipt (optional)</label>
+            {receipt ? (
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)]">
+                <span className="flex items-center gap-2 text-[13px] truncate min-w-0">
+                  <Icon name="paperclip" size={14} className="text-[var(--emerald)] shrink-0" />
+                  <span className="truncate">{receipt.name}</span>
+                </span>
+                <button onClick={() => setReceipt(null)} className="icon-btn w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-dim)] hover:bg-[var(--surface-hover)] shrink-0" aria-label="Remove receipt">
+                  <Icon name="x" size={13} />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => receiptRef.current?.click()} disabled={receiptBusy}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-[var(--border)] text-[13px] text-[var(--text-muted)] hover:border-[var(--emerald)] hover:text-[var(--text-primary)] focus-ring disabled:opacity-50">
+                <Icon name="upload" size={14} /> {receiptBusy ? "Processing…" : "Attach a photo or PDF"}
+              </button>
+            )}
+            <input ref={receiptRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleReceiptFile} />
+          </div>
+        </div>
+        <button onClick={() => valid && onApply({ kind, amount: Number(amount), date, note, receipt })} disabled={!valid}
+          className="w-full mt-6 h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring"
+          style={{ background: kind === "payment" ? "var(--emerald)" : "var(--amber)", color: "#06231a" }}>
+          Confirm {kind === "payment" ? (item.type === "debt" ? "payment" : "receipt") : (item.type === "debt" ? "charge" : "loan")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= ITEM MODAL (add/edit) ============================= */
+function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, onTransact }) {
+  const isEdit = !!initial;
+  const [type, setType] = useState(initial?.type || defaultType || "debt");
+  const [name, setName] = useState(initial?.name || "");
+  const [contact, setContact] = useState(initial?.contact || "");
+  const [contactImage, setContactImage] = useState(initial?.contactImage || null);
+  const [balance, setBalance] = useState(initial?.balance ?? "");
+  const [rate, setRate] = useState(initial?.rate ?? "");
+  const [minPayment, setMinPayment] = useState(initial?.minPayment ?? "");
+  const [dueDate, setDueDate] = useState(initial?.dueDate || "");
+  const [reminderDays, setReminderDays] = useState(initial?.reminderDays ?? 3);
+  const [notes, setNotes] = useState(initial?.notes || "");
+  const [showTxn, setShowTxn] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const fileRef = useRef(null);
+
+  const valid = name.trim() && Number(balance) >= 0;
+
+  const submit = () => {
+    if (!valid) return;
+    const base = {
+      id: initial?.id || uid("item"),
+      type, name: name.trim(), contact: contact.trim(), contactImage,
+      balance: Number(balance),
+      originalAmount: initial ? Math.max(initial.originalAmount || 0, Number(balance)) : Number(balance),
+      rate: Number(rate) || 0,
+      minPayment: Number(minPayment) || 0,
+      dueDate, reminderDays: Number(reminderDays) || 0, notes: notes.trim(),
+      status: initial?.status || "active",
+      createdAt: initial?.createdAt || new Date().toISOString(),
+      settledAt: initial?.settledAt || null,
+      history: initial?.history || [],
+    };
+    onSave(base);
+  };
+
+  const handleImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try { const dataUrl = await resizeImageFile(file); setContactImage(dataUrl); } catch (err) { /* ignore */ }
+  };
+
+  const applyTxn = ({ kind, amount, date, note, receipt }) => {
+    onTransact(initial.id, { kind, amount, date, note, receipt });
+    setShowTxn(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-xl font-semibold">{isEdit ? "Edit entry" : "Add an entry"}</h2>
+          <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={18} /></button>
+        </div>
+
+        <div className="glass rounded-2xl p-1 grid grid-cols-2 mb-5">
+          <button onClick={() => setType("debt")} className="py-2.5 rounded-xl text-sm font-medium font-display transition-all"
+            style={{ background: type === "debt" ? "var(--emerald-dim)" : "transparent", color: type === "debt" ? "var(--emerald)" : "var(--text-muted)", border: type === "debt" ? "1px solid #1c4f3c" : "1px solid transparent" }}>
+            <Icon name="trending-down" size={14} className="inline mr-1.5 -mt-0.5" /> I owe this
+          </button>
+          <button onClick={() => setType("receivable")} className="py-2.5 rounded-xl text-sm font-medium font-display transition-all"
+            style={{ background: type === "receivable" ? "var(--azure-dim)" : "transparent", color: type === "receivable" ? "var(--azure)" : "var(--text-muted)", border: type === "receivable" ? "1px solid #1c3a5c" : "1px solid transparent" }}>
+            <Icon name="trending-up" size={14} className="inline mr-1.5 -mt-0.5" /> Owed to me
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4 mb-5">
+          <div className="relative">
+            <Avatar image={contactImage} name={contact || name} size={56} />
+            <button onClick={() => fileRef.current?.click()} className="icon-btn absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[var(--emerald)] text-[#06231a] flex items-center justify-center border-2 border-[var(--bg-base)]" aria-label="Upload photo">
+              <Icon name="camera" size={13} />
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
+          </div>
+          <div className="flex-1">
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Contact / person</label>
+            <input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="e.g. John Kamau"
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-2.5 text-sm focus-ring focus:border-[var(--emerald)]" />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Debt name" : "What's it for"}</label>
+            <input autoFocus type="text" value={name} onChange={(e) => setName(e.target.value)}
+              placeholder={type === "debt" ? "e.g. Visa Signature Card" : "e.g. Loan for car repair"}
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Current balance" : "Amount owed to you"}</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+                <input type="number" min="0" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="4,500"
+                  className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Interest rate</label>
+              <div className="relative">
+                <input type="number" min="0" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="0"
+                  className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-3 pr-8 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">%</span>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Min. monthly payment" : "Expected monthly amount"}</label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+                <input type="number" min="0" value={minPayment} onChange={(e) => setMinPayment(e.target.value)} placeholder="0"
+                  className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
+              </div>
+            </div>
+            <div>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Due date</label>
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+                className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-3 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Remind me this many days before due date</label>
+            <input type="number" min="0" value={reminderDays} onChange={(e) => setReminderDays(e.target.value)}
+              className="num-input w-28 bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-3 py-2.5 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
+          </div>
+          <div>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Notes</label>
+            <textarea rows="2" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything worth remembering…"
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)] resize-none" />
+          </div>
+        </div>
+
+        {isEdit && (
+          <>
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setShowTxn(true)} className="flex-1 h-11 rounded-xl text-sm font-display font-semibold flex items-center justify-center gap-1.5 focus-ring"
+                style={{ background: "var(--surface)", border: "1px solid var(--border-soft)" }}>
+                <Icon name="banknote" size={15} /> Log payment / charge
+              </button>
+              {initial.status === "active" && (
+                <button onClick={() => onSettle(initial.id)} className="h-11 px-3.5 rounded-xl text-sm font-display font-semibold flex items-center justify-center gap-1.5 focus-ring"
+                  style={{ background: "var(--emerald-dim)", border: "1px solid #1c4f3c", color: "var(--emerald)" }} title="Mark as fully settled">
+                  <Icon name="badge-check" size={15} />
+                </button>
+              )}
+            </div>
+            {initial.history && initial.history.length > 0 && (
+              <div className="mt-4">
+                <button onClick={() => setShowHistory((s) => !s)} className="flex items-center gap-1.5 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                  <Icon name={showHistory ? "chevron-down" : "chevron-right"} size={13} /> {initial.history.length} past transaction{initial.history.length === 1 ? "" : "s"}
+                </button>
+                {showHistory && (
+                  <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {[...initial.history].reverse().map((t) => (
+                      <div key={t.id} className="flex items-center justify-between text-[12px] px-3 py-2 rounded-lg bg-[var(--surface)]">
+                        <span className="text-[var(--text-muted)] truncate">{fmtDate(t.date)} {t.note ? `· ${t.note}` : ""}</span>
+                        <span className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <ReceiptBadge receipt={t.receipt} />
+                          <span className="font-mono font-medium" style={{ color: t.kind === "payment" ? "var(--emerald)" : "var(--amber)" }}>
+                            {t.kind === "payment" ? "−" : "+"}{fmtMoney2(t.amount)}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          {isEdit && (
+            <button onClick={() => onDelete(initial.id)} className="icon-btn h-12 w-12 rounded-2xl flex items-center justify-center text-[var(--danger)] border border-[#4a1f2b] hover:bg-[#2a1218] focus-ring" aria-label="Delete entry">
+              <Icon name="trash-2" size={18} />
+            </button>
+          )}
+          <button onClick={submit} disabled={!valid} className="flex-1 h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring"
+            style={{ background: "var(--emerald)", color: "#06231a" }}>
+            {isEdit ? "Save changes" : "Add entry"}
+          </button>
+        </div>
+      </div>
+
+      {showTxn && isEdit && <TransactionModal item={initial} onClose={() => setShowTxn(false)} onApply={applyTxn} />}
+    </div>
+  );
+}
+
+/* ============================= STRATEGY TOGGLE & BUDGET ============================= */
+function StrategyToggle({ strategy, setStrategy }) {
+  return (
+    <div className="glass rounded-3xl p-2 relative">
+      <div className="grid grid-cols-2 relative">
+        <div className="absolute top-0 bottom-0 w-1/2 rounded-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{
+            background: strategy === "snowball" ? "linear-gradient(135deg,#0f3d30,#0a2b22)" : "linear-gradient(135deg,#0f2c47,#0a2036)",
+            border: `1px solid ${strategy === "snowball" ? "#1c4f3c" : "#1c3a5c"}`,
+            transform: strategy === "snowball" ? "translateX(0%)" : "translateX(100%)",
+          }}></div>
+        <Tooltip label="Prioritizes paying off your smallest balances first for quick psychological wins." position="bottom" className="w-full">
+          <button onClick={() => setStrategy("snowball")} className="segbtn relative z-10 py-4 flex flex-col items-center gap-1.5 focus-ring rounded-2xl w-full"
+            style={{ color: strategy === "snowball" ? "var(--emerald)" : "var(--text-muted)" }}>
+            <Icon name="snowflake" size={20} /><span className="font-display font-semibold text-sm">Snowball</span>
+            <span className="text-[11px] text-[var(--text-dim)]">Smallest balance first</span>
+          </button>
+        </Tooltip>
+        <Tooltip label="Prioritizes paying off your highest interest rates first to save the most money." position="bottom" className="w-full">
+          <button onClick={() => setStrategy("avalanche")} className="segbtn relative z-10 py-4 flex flex-col items-center gap-1.5 focus-ring rounded-2xl w-full"
+            style={{ color: strategy === "avalanche" ? "var(--azure)" : "var(--text-muted)" }}>
+            <Icon name="mountain-snow" size={20} /><span className="font-display font-semibold text-sm">Avalanche</span>
+            <span className="text-[11px] text-[var(--text-dim)]">Highest interest first</span>
+          </button>
+        </Tooltip>
+      </div>
+    </div>
+  );
+}
+
+function BudgetControl({ extraBudget, setExtraBudget, minSum }) {
+  return (
+    <div className="glass rounded-3xl p-5 sm:p-6">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[11px] uppercase tracking-widest text-[var(--text-dim)] font-medium">Extra monthly budget</span>
+        <Icon name="rocket" size={16} className="text-[var(--emerald)]" />
+      </div>
+      <div className="flex items-baseline gap-2 mb-4">
+        <span className="font-mono text-3xl font-semibold">{fmtMoney(extraBudget)}</span>
+        <span className="text-[13px] text-[var(--text-muted)]">/ month on top of minimums</span>
+      </div>
+      <input type="range" min="0" max="3000" step="10" value={extraBudget} onChange={(e) => setExtraBudget(Number(e.target.value))} className="slider-track w-full mb-4" />
+      <div className="flex items-center gap-3">
+        <Tooltip label="Any extra cash added here will be completely funneled into your top priority debt." position="top" className="flex-1">
+          <div className="relative flex-1 w-full">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+            <input type="number" min="0" value={extraBudget} onChange={(e) => setExtraBudget(Math.max(0, Number(e.target.value)))}
+              className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-2.5 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
+          </div>
+        </Tooltip>
+        <span className="text-[12px] text-[var(--text-dim)] whitespace-nowrap">minimums total {fmtMoney(minSum)}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= DEBT SNAKE TIMELINE ============================= */
+function DebtSnake({ items, sim, strategy }) {
+  const maxMonths = Math.max(1, sim.months);
+  const orderedDebts = sim.order.map((id) => items.find((d) => d.id === id)).filter(Boolean);
+  if (orderedDebts.length === 0) {
+    return <EmptyState icon="party-popper" title="Nothing to pay off" sub="Add a debt you owe to see your payoff timeline come to life." />;
+  }
+  const palette = ["#34d399", "#3b9eff", "#fbbf24", "#fb7185", "#a78bfa", "#f472b6", "#22d3ee", "#f97316"];
+  return (
+    <div className="glass rounded-3xl p-5 sm:p-7">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-display font-semibold text-lg">Payoff timeline</h3>
+        <span className="text-[12px] text-[var(--text-dim)] font-mono">{maxMonths} mo total</span>
+      </div>
+      <p className="text-[13px] text-[var(--text-muted)] mb-6">
+        Order and speed each balance hits zero, using the {strategy === "snowball" ? "Snowball" : "Avalanche"} method.
+      </p>
+      <div className="space-y-4">
+        {orderedDebts.map((d, i) => {
+          const payoff = sim.payoffMonth[d.id] || 0;
+          const widthPct = Math.max(3, (payoff / maxMonths) * 100);
+          const color = palette[i % palette.length];
+          return (
+            <div key={d.id} className="anim-in" style={{ animationDelay: `${i * 70}ms` }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold shrink-0" style={{ background: color + "22", color, border: `1px solid ${color}55` }}>{i + 1}</span>
+                  <span className="font-medium text-sm truncate">{d.name}</span>
+                </div>
+                <span className="text-[11px] font-mono text-[var(--text-dim)] shrink-0 ml-2">{monthsFromNowLabel(payoff)}</span>
+              </div>
+              <div className="h-3 rounded-full bg-[#111726] relative overflow-hidden">
+                <div className="gantt-bar h-full rounded-full relative" style={{ width: `${widthPct}%`, background: `linear-gradient(90deg, ${color}55, ${color})` }}>
+                  <span className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full pulse-dot" style={{ background: color, "--ring-color": color + "8c", "--ring-color-transparent": color + "00" }}></span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 mt-6 pt-5 border-t border-[var(--border-soft)]">
+        <Icon name="flag" size={14} className="text-[var(--text-dim)]" />
+        <span className="text-[12px] text-[var(--text-dim)]">Debt-free by <span className="text-[var(--text-primary)] font-medium">{monthsFromNowLabel(maxMonths)}</span></span>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= CONTACTS VIEW ============================= */
+function ContactsView({ items, onOpenItem }) {
+  const [query, setQuery] = useState("");
+  const summaries = useMemo(() => {
+    const all = contactSummaries(items);
+    if (!query.trim()) return all;
+    const q = query.toLowerCase();
+    return all.filter((c) => c.name.toLowerCase().includes(q));
+  }, [items, query]);
+  const [expanded, setExpanded] = useState(null);
+
+  if (items.length === 0) {
+    return <EmptyState icon="users" title="No contacts yet" sub="Add a debt or receivable with a contact name to see them grouped here." />;
+  }
+
+  return (
+    <div>
+      <Tooltip label="Filter contacts by name." position="bottom" className="max-w-sm w-full">
+        <div className="relative mb-4 max-w-sm w-full">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)]"><Icon name="search" size={16} /></span>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search contacts…"
+            className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-10 pr-3 py-2.5 text-sm focus-ring focus:border-[var(--emerald)]" />
+        </div>
+      </Tooltip>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {summaries.map((c, i) => {
+          const net = c.receivableTotal - c.debtTotal;
+          const isOpen = expanded === c.name;
+          return (
+            <div key={c.name} className="glass rounded-2xl p-4 sm:p-5 anim-in" style={{ animationDelay: `${i * 40}ms` }}>
+              <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded(isOpen ? null : c.name)}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar image={c.image} name={c.name} size={40} />
+                  <div className="min-w-0">
+                    <div className="font-display font-semibold text-[15px] truncate">{c.name}</div>
+                    <div className="text-[11px] text-[var(--text-dim)]">{c.items.length} entr{c.items.length === 1 ? "y" : "ies"}</div>
+                  </div>
+                </div>
+                <Tooltip label="What they owe you, minus what you owe them." position="top">
+                  <div className="text-right shrink-0">
+                    <div className="font-mono text-base font-semibold" style={{ color: net >= 0 ? "var(--emerald)" : "var(--danger)" }}>
+                      {net >= 0 ? "+" : ""}{fmtMoney(net)}
+                    </div>
+                    <div className="text-[11px] text-[var(--text-dim)]">net position</div>
+                  </div>
+                </Tooltip>
+              </div>
+              <div className="flex gap-2 mt-3 text-[12px]">
+                <span className="px-2 py-1 rounded-lg bg-[var(--azure-dim)] text-[var(--azure)] border border-[#1c3a5c]">Owes you {fmtMoney(c.receivableTotal)}</span>
+                <span className="px-2 py-1 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)] border border-[#5c451a]">You owe {fmtMoney(c.debtTotal)}</span>
+              </div>
+              {isOpen && (
+                <div className="mt-3 pt-3 border-t border-[var(--border-soft)] space-y-2">
+                  {c.items.map((it) => (
+                    <div key={it.id} onClick={() => onOpenItem(it)} className="flex items-center justify-between text-[13px] px-2 py-1.5 rounded-lg hover:bg-[var(--surface-hover)] cursor-pointer">
+                      <span className="truncate">{it.name} {it.status === "settled" && <span className="text-[var(--text-dim)]">(settled)</span>}</span>
+                      <span className="font-mono" style={{ color: it.type === "debt" ? "var(--amber)" : "var(--azure)" }}>{fmtMoney(it.balance)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ============================= HISTORY VIEW ============================= */
+function HistoryView({ items }) {
+  const [query, setQuery] = useState("");
+  const transactions = useMemo(() => {
+    let all = [];
+    items.forEach((it) => {
+      (it.history || []).forEach((t) => all.push({ ...t, itemName: it.name, contact: it.contact, itemType: it.type }));
+    });
+    all.sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      all = all.filter((t) => [t.itemName, t.contact, t.note].filter(Boolean).join(" ").toLowerCase().includes(q));
+    }
+    return all;
+  }, [items, query]);
+
+  const settled = useMemo(() => items.filter((i) => i.status === "settled").sort((a, b) => new Date(b.settledAt || 0) - new Date(a.settledAt || 0)), [items]);
+
+  return (
+    <div className="space-y-6">
+      <Tooltip label="Search transactions by item name, contact, or note." position="bottom" className="max-w-sm w-full">
+        <div className="relative max-w-sm w-full">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)]"><Icon name="search" size={16} /></span>
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search transaction history…"
+            className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-10 pr-3 py-2.5 text-sm focus-ring focus:border-[var(--emerald)]" />
+        </div>
+      </Tooltip>
+
+      <div>
+        <h3 className="font-display font-semibold text-lg mb-3 flex items-center gap-2">
+          <Tooltip label="A running log of every payment or charge you've logged, across all entries, newest first." position="bottom">
+            <span className="flex items-center gap-2"><Icon name="receipt" size={17} className="text-[var(--emerald)]" /> Payment history</span>
+          </Tooltip>
+        </h3>
+        {transactions.length === 0 ? (
+          <EmptyState icon="inbox" title="No transactions yet" sub="Every payment, receipt, or charge you log will show up here — even for debts you've since settled." />
+        ) : (
+          <div className="glass rounded-2xl divide-y divide-[var(--border-soft)] overflow-hidden">
+            {transactions.map((t) => (
+              <div key={t.id} className="flex items-center justify-between px-4 sm:px-5 py-3 hover:bg-[var(--surface-hover)]">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{t.itemName}{t.contact ? ` · ${t.contact}` : ""}</div>
+                  <div className="text-[11px] text-[var(--text-dim)]">{fmtDate(t.date)}{t.note ? ` · ${t.note}` : ""}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  <ReceiptBadge receipt={t.receipt} />
+                  <div className="font-mono text-sm font-semibold" style={{ color: t.kind === "payment" ? "var(--emerald)" : "var(--amber)" }}>
+                    {t.kind === "payment" ? "−" : "+"}{fmtMoney2(t.amount)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="font-display font-semibold text-lg mb-3 flex items-center gap-2">
+          <Tooltip label="Debts and loans you've fully paid off or been repaid on — kept for your records." position="bottom">
+            <span className="flex items-center gap-2"><Icon name="archive" size={17} className="text-[var(--violet)]" /> Settled &amp; archived</span>
+          </Tooltip>
+        </h3>
+        {settled.length === 0 ? (
+          <p className="text-[13px] text-[var(--text-muted)]">Nothing settled yet — paid-off debts and fully repaid loans will be archived here for your records.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {settled.map((it) => (
+              <div key={it.id} className="glass rounded-2xl p-4 flex items-center gap-3">
+                <Avatar image={it.contactImage} name={it.contact || it.name} size={36} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{it.name}</div>
+                  <div className="text-[11px] text-[var(--text-dim)]">Settled {fmtDateTime(it.settledAt)}</div>
+                </div>
+                <Icon name="badge-check" size={18} className="text-[var(--emerald)] shrink-0" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================= STATISTICS VIEW ============================= */
+function StatisticsView({ items, sim, extraBudget, strategy }) {
+  const activeDebts = items.filter((i) => i.type === "debt" && i.status === "active");
+  const activeReceivables = items.filter((i) => i.type === "receivable" && i.status === "active");
+  const totalDebt = activeDebts.reduce((s, d) => s + d.balance, 0);
+  const totalReceivable = activeReceivables.reduce((s, d) => s + d.balance, 0);
+  const net = totalReceivable - totalDebt;
+
+  let totalPaidOut = 0, totalReceived = 0;
+  items.forEach((it) => (it.history || []).forEach((t) => {
+    if (it.type === "debt" && t.kind === "payment") totalPaidOut += t.amount;
+    if (it.type === "receivable" && t.kind === "payment") totalReceived += t.amount;
+  }));
+
+  const settledCount = items.filter((i) => i.status === "settled").length;
+  const upcoming = items.filter((i) => i.status === "active" && i.dueDate && daysUntil(i.dueDate) <= (i.reminderDays ?? 3) && daysUntil(i.dueDate) >= -30);
+
+  const topBalances = [...items].filter((i) => i.status === "active" && i.balance > 0).sort((a, b) => b.balance - a.balance).slice(0, 6);
+  const maxTop = Math.max(1, ...topBalances.map((i) => i.balance));
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard icon="trending-down" label="You owe" value={fmtMoney(totalDebt)} sub={`${activeDebts.length} active`} accent="amber" delay={0} tip="Sum of all balances across your active debts." />
+        <MetricCard icon="trending-up" label="Owed to you" value={fmtMoney(totalReceivable)} sub={`${activeReceivables.length} active`} accent="azure" delay={40} tip="Sum of all balances people still owe you." />
+        <MetricCard icon="wallet" label="Net position" value={`${net >= 0 ? "+" : ""}${fmtMoney(net)}`} sub={net >= 0 ? "You're net positive" : "You're net negative"} accent={net >= 0 ? "emerald" : "amber"} delay={80} tip="What you'd have left if everyone paid you back and you paid everyone off." />
+        <MetricCard icon="banknote" label="Interest to be paid" value={fmtMoney(sim.totalInterest)} sub={`${strategy === "snowball" ? "Snowball" : "Avalanche"} plan`} accent="violet" delay={120} tip="Total interest you'll pay over the life of your current payoff plan." />
+        <MetricCard icon="badge-check" label="Total paid historically" value={fmtMoney(totalPaidOut)} sub="Across all your debts" accent="emerald" delay={160} tip="Every payment you've ever logged toward your own debts." />
+        <MetricCard icon="archive" label="Total received historically" value={fmtMoney(totalReceived)} sub="From people who owed you" accent="azure" delay={200} tip="Every payment you've received from people who owed you money." />
+        <MetricCard icon="badge-check" label="Settled entries" value={String(settledCount)} sub="Fully paid off or repaid" accent="violet" delay={240} tip="Debts and loans you've marked as fully paid off or repaid." />
+        <MetricCard icon="alarm-clock" label="Due soon" value={String(upcoming.length)} sub="Within your reminder window" accent="amber" delay={280} tip="Entries whose due date falls inside their reminder window." />
+      </div>
+
+      <div className="glass rounded-3xl p-5 sm:p-7">
+        <Tooltip label="Your six biggest active balances, debts or receivables, ranked highest to lowest." position="bottom">
+          <h3 className="font-display font-semibold text-lg mb-4 inline-block">Largest active balances</h3>
+        </Tooltip>
+        {topBalances.length === 0 ? (
+          <p className="text-[13px] text-[var(--text-muted)]">No active balances to rank yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {topBalances.map((it, i) => (
+              <div key={it.id} className="anim-in" style={{ animationDelay: `${i * 40}ms` }}>
+                <div className="flex items-center justify-between text-[13px] mb-1">
+                  <span className="truncate font-medium">{it.name}{it.contact ? ` · ${it.contact}` : ""}</span>
+                  <span className="font-mono text-[var(--text-muted)] shrink-0 ml-2">{fmtMoney(it.balance)}</span>
+                </div>
+                <div className="h-2.5 rounded-full bg-[#111726] overflow-hidden">
+                  <div className="progress-bar-fill h-full rounded-full" style={{ width: `${(it.balance / maxTop) * 100}%`, background: it.type === "debt" ? "linear-gradient(90deg,#fbbf2488,#fbbf24)" : "linear-gradient(90deg,#3b9eff88,#3b9eff)" }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {upcoming.length > 0 && (
+        <div className="glass rounded-3xl p-5 sm:p-7">
+          <Tooltip label="Entries due soon, based on each one's own reminder window." position="bottom">
+            <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2"><Icon name="alarm-clock" size={17} className="text-[var(--amber)]" /> Upcoming reminders</h3>
+          </Tooltip>
+          <div className="space-y-2">
+            {upcoming.sort((a, b) => daysUntil(a.dueDate) - daysUntil(b.dueDate)).map((it) => (
+              <div key={it.id} className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--surface)]">
+                <span className="text-sm font-medium">{it.name}{it.contact ? ` · ${it.contact}` : ""}</span>
+                <DueBadge item={it} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================= DATA PANEL (import / export / backup) ============================= */
+function DataPanel({ items, onClose, onImport }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [importPreview, setImportPreview] = useState(null); // {rows, fileName}
+  const fileRef = useRef(null);
+
+  const guessField = (row, candidates) => {
+    const keys = Object.keys(row);
+    for (const c of candidates) {
+      const found = keys.find((k) => k.toLowerCase().replace(/[^a-z]/g, "").includes(c));
+      if (found) return row[found];
+    }
+    return "";
+  };
+
+  const parseFile = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = window.XLSX.read(e.target.result, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        const parsed = rows.map((row) => {
+          const typeRaw = String(guessField(row, ["type", "direction", "category"])).toLowerCase();
+          const type = /receiv|owed to me|lent|loanedout|theyowe/.test(typeRaw) ? "receivable" : "debt";
+          const balanceRaw = guessField(row, ["balance", "amount", "owed", "outstanding"]);
+          const rateRaw = guessField(row, ["rate", "interest", "apr"]);
+          const minRaw = guessField(row, ["minpayment", "minimumpayment", "monthlypayment", "payment"]);
+          const dueRaw = guessField(row, ["duedate", "due", "date"]);
+          let dueDate = "";
+          if (dueRaw) {
+            const d = new Date(dueRaw);
+            if (!isNaN(d.getTime())) dueDate = d.toISOString().slice(0, 10);
+          }
+          return {
+            id: uid("item"),
+            type,
+            name: String(guessField(row, ["name", "title", "debt", "description"]) || "Imported entry"),
+            contact: String(guessField(row, ["contact", "person", "who", "lender", "borrower"])),
+            contactImage: null,
+            balance: Number(String(balanceRaw).replace(/[^0-9.-]/g, "")) || 0,
+            originalAmount: Number(String(balanceRaw).replace(/[^0-9.-]/g, "")) || 0,
+            rate: Number(String(rateRaw).replace(/[^0-9.-]/g, "")) || 0,
+            minPayment: Number(String(minRaw).replace(/[^0-9.-]/g, "")) || 0,
+            dueDate, reminderDays: 3,
+            notes: String(guessField(row, ["notes", "note", "memo"])),
+            status: "active", createdAt: new Date().toISOString(), settledAt: null, history: [],
+          };
+        }).filter((r) => r.name && r.balance >= 0);
+        setImportPreview({ rows: parsed, fileName: file.name });
+      } catch (err) {
+        alert("Couldn't read that file. Please upload a valid .xlsx, .xls, or .csv file.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleFiles = (files) => { const f = files?.[0]; if (f) parseFile(f); };
+
+  const exportItemsCSV = () => {
+    const csv = toCSV(items, [
+      { label: "Type", get: (r) => r.type === "debt" ? "I Owe" : "Owed to Me" },
+      { label: "Name", get: (r) => r.name },
+      { label: "Contact", get: (r) => r.contact },
+      { label: "Balance", get: (r) => r.balance },
+      { label: "Original Amount", get: (r) => r.originalAmount },
+      { label: "Interest Rate %", get: (r) => r.rate },
+      { label: "Monthly Payment", get: (r) => r.minPayment },
+      { label: "Due Date", get: (r) => r.dueDate },
+      { label: "Reminder Days", get: (r) => r.reminderDays },
+      { label: "Status", get: (r) => r.status },
+      { label: "Date Added", get: (r) => r.createdAt },
+      { label: "Settled At", get: (r) => r.settledAt || "" },
+      { label: "Notes", get: (r) => r.notes },
+    ]);
+    downloadFile(`ledger-entries-${todayISO()}.csv`, csv, "text/csv");
+  };
+
+  const exportTransactionsCSV = () => {
+    let rows = [];
+    items.forEach((it) => (it.history || []).forEach((t) => rows.push({ ...t, itemName: it.name, contact: it.contact, itemType: it.type })));
+    const csv = toCSV(rows, [
+      { label: "Item", get: (r) => r.itemName },
+      { label: "Contact", get: (r) => r.contact },
+      { label: "Type", get: (r) => r.itemType === "debt" ? "I Owe" : "Owed to Me" },
+      { label: "Kind", get: (r) => r.kind },
+      { label: "Amount", get: (r) => r.amount },
+      { label: "Date", get: (r) => r.date },
+      { label: "Note", get: (r) => r.note },
+    ]);
+    downloadFile(`ledger-transactions-${todayISO()}.csv`, csv, "text/csv");
+  };
+
+  const exportJSON = () => {
+    downloadFile(`ledger-backup-${todayISO()}.json`, JSON.stringify({ items, exportedAt: new Date().toISOString() }, null, 2), "application/json");
+  };
+
+  const exportEverything = () => {
+    exportJSON();
+    setTimeout(exportItemsCSV, 250);
+    setTimeout(exportTransactionsCSV, 500);
+  };
+
+  const downloadTemplate = () => {
+    const headers = ["Type", "Name", "Contact", "Balance", "Interest Rate (%)", "Monthly Payment", "Due Date (YYYY-MM-DD)", "Notes"];
+    const examples = [
+      ["I Owe", "Visa Signature Card", "Chase Bank", 4500, 22.99, 120, "2026-08-15", "Optional — anything worth remembering"],
+      ["Owed to Me", "Loan for car repair", "John Kamau", 300, 0, 50, "2026-08-01", ""],
+    ];
+    const ws = window.XLSX.utils.aoa_to_sheet([headers, ...examples]);
+    ws["!cols"] = [{ wch: 12 }, { wch: 26 }, { wch: 18 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 30 }];
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "Entries");
+    const out = window.XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    downloadFile("ledger-import-template.xlsx", out, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-xl font-semibold">Import, export &amp; backup</h2>
+          <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={18} /></button>
+        </div>
+
+        {!importPreview ? (
+          <>
+            <h3 className="text-[12px] uppercase tracking-widest text-[var(--text-dim)] font-medium mb-2">Import from a spreadsheet</h3>
+            <Tooltip label="Get a ready-made .xlsx with the right columns and two example rows." position="bottom" className="w-full">
+              <button onClick={downloadTemplate} className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-3 focus-ring" style={{ background: "var(--azure-dim)", border: "1px solid #1c3a5c" }}>
+                <span className="flex items-center gap-2 text-sm font-medium text-[var(--azure)]"><Icon name="download" size={15} /> Download blank Excel template</span>
+                <Icon name="chevron-right" size={15} className="text-[var(--azure)]" />
+              </button>
+            </Tooltip>
+            <p className="text-[12px] text-[var(--text-dim)] mb-4 leading-relaxed">
+              Fill it in offline — one row per debt or person who owes you — then drop the same file back in below and it'll be read in automatically.
+            </p>
+            <div
+              className={`dropzone rounded-2xl p-6 text-center cursor-pointer ${dragOver ? "drag-over" : ""}`}
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+            >
+              <Icon name="file-spreadsheet" size={26} className="text-[var(--emerald)] mx-auto mb-2" />
+              <p className="text-sm font-medium">Drop an Excel or CSV file here</p>
+              <p className="text-[12px] text-[var(--text-dim)] mt-1">We'll auto-detect names, amounts, contacts, and dates — no manual typing needed</p>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => handleFiles(e.target.files)} />
+            </div>
+
+            <h3 className="text-[12px] uppercase tracking-widest text-[var(--text-dim)] font-medium mb-2 mt-7">Export your data</h3>
+            <div className="grid grid-cols-1 gap-2.5">
+              <button onClick={exportEverything} className="flex items-center justify-between px-4 py-3 rounded-xl focus-ring" style={{ background: "var(--emerald-dim)", border: "1px solid #1c4f3c" }}>
+                <span className="flex items-center gap-2 text-sm font-medium text-[var(--emerald)]"><Icon name="download" size={16} /> Export everything (JSON + 2 CSVs)</span>
+                <Icon name="chevron-right" size={15} className="text-[var(--emerald)]" />
+              </button>
+              <button onClick={exportItemsCSV} className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] focus-ring hover:bg-[var(--surface-hover)]">
+                <span className="flex items-center gap-2 text-sm font-medium"><Icon name="file-spreadsheet" size={16} /> Entries only (CSV)</span>
+                <Icon name="chevron-right" size={15} className="text-[var(--text-dim)]" />
+              </button>
+              <button onClick={exportTransactionsCSV} className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] focus-ring hover:bg-[var(--surface-hover)]">
+                <span className="flex items-center gap-2 text-sm font-medium"><Icon name="receipt" size={16} /> Payment history only (CSV)</span>
+                <Icon name="chevron-right" size={15} className="text-[var(--text-dim)]" />
+              </button>
+              <button onClick={exportJSON} className="flex items-center justify-between px-4 py-3 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] focus-ring hover:bg-[var(--surface-hover)]">
+                <span className="flex items-center gap-2 text-sm font-medium"><Icon name="cloud" size={16} /> Full backup (JSON)</span>
+                <Icon name="chevron-right" size={15} className="text-[var(--text-dim)]" />
+              </button>
+            </div>
+            <p className="text-[12px] text-[var(--text-dim)] mt-3 leading-relaxed">
+              "Full backup" downloads a file to your device. To back it up on Google Drive, save it into your synced Drive folder, or upload it manually at drive.google.com — this app can't connect to your Drive account directly since it runs entirely offline with no server of its own.
+            </p>
+          </>
+        ) : (
+          <div>
+            <p className="text-sm mb-3"><span className="font-semibold">{importPreview.rows.length}</span> row{importPreview.rows.length === 1 ? "" : "s"} found in <span className="text-[var(--text-muted)]">{importPreview.fileName}</span>:</p>
+            <div className="glass rounded-xl divide-y divide-[var(--border-soft)] max-h-64 overflow-y-auto mb-4">
+              {importPreview.rows.slice(0, 8).map((r, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-2 text-[13px]">
+                  <span className="truncate">{r.name}{r.contact ? ` · ${r.contact}` : ""} <span className="text-[11px] text-[var(--text-dim)]">({r.type === "debt" ? "I Owe" : "Owed to Me"})</span></span>
+                  <span className="font-mono shrink-0 ml-2">{fmtMoney(r.balance)}</span>
+                </div>
+              ))}
+              {importPreview.rows.length > 8 && <div className="px-3 py-2 text-[12px] text-[var(--text-dim)]">+ {importPreview.rows.length - 8} more…</div>}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setImportPreview(null)} className="flex-1 h-11 rounded-xl text-sm font-medium bg-[var(--surface)] border border-[var(--border-soft)] focus-ring">Cancel</button>
+              <button onClick={() => { onImport(importPreview.rows); setImportPreview(null); onClose(); }}
+                className="flex-1 h-11 rounded-xl text-sm font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+                Import {importPreview.rows.length} entries
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================= DASHBOARD ============================= */
+function Dashboard({ data, saveData, onLock }) {
+  const { items, extraBudget, strategy } = data;
+  const [tab, setTab] = useState("overview"); // overview | owe | owed | contacts | history | stats
+  const [modalItem, setModalItem] = useState(null); // null closed, {} new, {...} edit
+  const [modalDefaultType, setModalDefaultType] = useState("debt");
+  const [showDataPanel, setShowDataPanel] = useState(false);
+
+  const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState("dateAdded");
+  const [sortDir, setSortDir] = useState("desc");
+  const [statusFilter, setStatusFilter] = useState("active");
+
+  const setItems = (updater) => saveData((prev) => ({ ...prev, items: typeof updater === "function" ? updater(prev.items) : updater }));
+  const setExtraBudget = (v) => saveData((prev) => ({ ...prev, extraBudget: v }));
+  const setStrategy = (v) => saveData((prev) => ({ ...prev, strategy: v }));
+
+  const sim = useMemo(() => simulatePayoff(items, extraBudget, strategy), [items, extraBudget, strategy]);
+
+  const debts = items.filter((i) => i.type === "debt");
+  const receivables = items.filter((i) => i.type === "receivable");
+  const totalBalance = debts.filter((d) => d.status === "active").reduce((s, d) => s + d.balance, 0);
+  const minSum = debts.filter((d) => d.status === "active").reduce((s, d) => s + d.minPayment, 0);
+  const totalReceivable = receivables.filter((d) => d.status === "active").reduce((s, d) => s + d.balance, 0);
+
+  const strategyColor = strategy === "snowball"
+    ? { text: "var(--emerald)", dim: "var(--emerald-dim)", border: "#1c4f3c" }
+    : { text: "var(--azure)", dim: "var(--azure-dim)", border: "#1c3a5c" };
+
+  const oweFiltered = useMemo(() => filterSortItems(debts, { query, sortBy, sortDir, statusFilter }), [debts, query, sortBy, sortDir, statusFilter]);
+  const owedFiltered = useMemo(() => filterSortItems(receivables, { query, sortBy, sortDir, statusFilter }), [receivables, query, sortBy, sortDir, statusFilter]);
+
+  const rankMap = useMemo(() => { const m = {}; sim.order.forEach((id, i) => { m[id] = i + 1; }); return m; }, [sim]);
+
+  const openNew = (type) => { setModalDefaultType(type); setModalItem({}); };
+
+  const handleSaveItem = (item) => {
+    setItems((prev) => {
+      const exists = prev.some((d) => d.id === item.id);
+      return exists ? prev.map((d) => (d.id === item.id ? item : d)) : [...prev, item];
+    });
+    setModalItem(null);
+  };
+  const handleDeleteItem = (id) => { setItems((prev) => prev.filter((d) => d.id !== id)); setModalItem(null); };
+  const handleSettleItem = (id) => {
+    setItems((prev) => prev.map((d) => d.id === id ? { ...d, status: "settled", balance: 0, settledAt: new Date().toISOString() } : d));
+    setModalItem(null);
+  };
+  const handleTransact = (id, { kind, amount, date, note, receipt }) => {
+    setItems((prev) => prev.map((d) => {
+      if (d.id !== id) return d;
+      let balance = d.balance;
+      let originalAmount = d.originalAmount || d.balance;
+      if (kind === "payment") balance = Math.max(0, balance - amount);
+      else { balance += amount; originalAmount = Math.max(originalAmount, balance); }
+      const txn = { id: uid("txn"), kind, amount, date, note, receipt: receipt || null };
+      const settled = balance <= 0.005 && kind === "payment";
+      return {
+        ...d, balance, originalAmount,
+        status: settled ? "settled" : d.status,
+        settledAt: settled ? new Date().toISOString() : d.settledAt,
+        history: [...(d.history || []), txn],
+      };
+    }));
+  };
+  const handleImportRows = (rows) => setItems((prev) => [...prev, ...rows]);
+
+  const TABS = [
+    { id: "overview", label: "Overview", icon: "bar-chart-3", tip: "Your at-a-glance snapshot: balances, freedom date, and payoff order." },
+    { id: "owe", label: "I Owe", icon: "trending-down", tip: "Debts you're paying down — cards, loans, and lines of credit." },
+    { id: "owed", label: "Owed to Me", icon: "trending-up", tip: "Money others owe you, plus payments you've received back." },
+    { id: "contacts", label: "Contacts", icon: "users", tip: "See what each person owes you or you owe them, grouped together." },
+    { id: "history", label: "History", icon: "clock", tip: "Every payment and charge you've ever logged, plus settled debts." },
+    { id: "stats", label: "Statistics", icon: "sparkles", tip: "Deeper numbers: net position, totals paid, and largest balances." },
+  ];
+
+  return (
+    <div className="min-h-screen pb-16">
+      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-[var(--border-soft)]" style={{ background: "rgba(8,11,17,0.75)" }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center">
+              <Icon name="landmark" size={16} className="text-[var(--emerald)]" />
+            </div>
+            <span className="font-display font-semibold text-[17px] tracking-tight hidden sm:inline">Ledger</span>
+          </div>
+          <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+            {TABS.map((t) => (
+              <Tooltip key={t.id} label={t.tip} position="bottom">
+                <button onClick={() => setTab(t.id)}
+                  className="tab-btn flex items-center gap-1.5 h-9 px-3 rounded-xl text-[13px] font-medium whitespace-nowrap focus-ring"
+                  style={{ background: tab === t.id ? "var(--surface-hover)" : "transparent", color: tab === t.id ? "var(--text-primary)" : "var(--text-muted)" }}>
+                  <Icon name={t.icon} size={14} /> <span className="hidden md:inline">{t.label}</span>
+                </button>
+              </Tooltip>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2 shrink-0">
+            <Tooltip label="Import a spreadsheet, export your data, or back it up." position="bottom">
+              <button onClick={() => setShowDataPanel(true)} className="icon-btn h-9 w-9 rounded-xl flex items-center justify-center text-[var(--text-muted)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] focus-ring">
+                <Icon name="cloud" size={15} />
+              </button>
+            </Tooltip>
+            <Tooltip label="Instantly re-lock your dashboard and require your PIN again." position="bottom">
+              <button onClick={onLock} className="icon-btn flex items-center gap-2 h-9 px-3.5 rounded-xl text-[13px] font-medium text-[var(--text-muted)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] focus-ring">
+                <Icon name="lock" size={14} /> <span className="hidden sm:inline">Lock</span>
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+        {tab === "overview" && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <MetricCard icon="wallet" label="Total remaining" value={fmtMoney(totalBalance)} sub={`${debts.filter(d=>d.status==='active').length} active debt${debts.filter(d=>d.status==='active').length===1?"":"s"}`} accent="emerald" delay={0} tip="The combined balance of every active debt you're currently paying down." />
+              <MetricCard icon="trending-down" label="Interest to be paid" value={fmtMoney(sim.totalInterest)} sub={strategy === "avalanche" ? "Minimized via Avalanche" : "Snowball order applied"} accent="amber" delay={60} tip="Total interest you'll pay over the life of your plan at this strategy." />
+              <MetricCard icon="calendar-check" label="Freedom date" value={debts.filter(d=>d.status==='active').length ? monthsFromNowLabel(sim.months) : "—"} sub={debts.filter(d=>d.status==='active').length ? `${sim.months} month${sim.months === 1 ? "" : "s"} from now` : "Add debts to begin"} accent="azure" delay={120} tip="Projected month you'll be completely debt-free at your current extra budget." />
+            </div>
+
+            {sim.insufficient && (
+              <div className="glass rounded-2xl p-4 mb-6 flex items-center gap-3 border-[#5c451a] anim-in">
+                <Icon name="triangle-alert" size={18} className="text-[var(--amber)] shrink-0" />
+                <p className="text-[13px] text-[var(--text-muted)]">At this payment level your payoff stretches past 60 years. Increase your extra monthly budget to see a realistic freedom date.</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 order-2 lg:order-1">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display font-semibold text-lg">Your debts (payoff order)</h2>
+                  <Tooltip label="Add a new card, loan, or line of credit you owe." position="bottom">
+                    <button onClick={() => openNew("debt")} className="icon-btn inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+                      <Icon name="plus" size={15} /> Add debt
+                    </button>
+                  </Tooltip>
+                </div>
+                {debts.filter((d) => d.status === "active").length === 0 ? (
+                  <EmptyState title="No debts tracked yet" sub="Add your first balance — a card, loan, or line of credit — and watch your payoff plan build itself." cta="Add your first debt" onCta={() => openNew("debt")} />
+                ) : (
+                  <div className="space-y-3">
+                    {sim.order.map((id) => items.find((d) => d.id === id)).filter(Boolean).map((d, i) => (
+                      <ItemCard key={d.id} item={d} rank={i + 1} accentColor={strategyColor} onOpen={setModalItem} delay={i * 50} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="order-1 lg:order-2 space-y-4">
+                <StrategyToggle strategy={strategy} setStrategy={setStrategy} />
+                <BudgetControl extraBudget={extraBudget} setExtraBudget={setExtraBudget} minSum={minSum} />
+                <div className="glass rounded-3xl p-5">
+                  <div className="flex items-center justify-between mb-1">
+                    <Tooltip label="The total balance people currently owe you across all active receivables." position="top">
+                      <span className="text-[11px] uppercase tracking-widest text-[var(--text-dim)] font-medium">Owed to you</span>
+                    </Tooltip>
+                    <Icon name="trending-up" size={16} className="text-[var(--azure)]" />
+                  </div>
+                  <div className="font-mono text-2xl font-semibold mb-3">{fmtMoney(totalReceivable)}</div>
+                  <Tooltip label="Track money you've lent to someone else." position="bottom" className="w-full">
+                    <button onClick={() => openNew("receivable")} className="w-full h-10 rounded-xl text-[13px] font-display font-semibold flex items-center justify-center gap-1.5 focus-ring" style={{ background: "var(--azure-dim)", border: "1px solid #1c3a5c", color: "var(--azure)" }}>
+                      <Icon name="plus" size={14} /> Add who owes you
+                    </button>
+                  </Tooltip>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6"><DebtSnake items={items} sim={sim} strategy={strategy} /></div>
+          </>
+        )}
+
+        {(tab === "owe" || tab === "owed") && (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-semibold text-lg">{tab === "owe" ? "Debts you owe" : "People who owe you"}</h2>
+              <Tooltip label={tab === "owe" ? "Add a new card, loan, or line of credit you owe." : "Add a new person or loan that owes you money."} position="bottom">
+                <button onClick={() => openNew(tab === "owe" ? "debt" : "receivable")} className="icon-btn inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+                  <Icon name="plus" size={15} /> Add {tab === "owe" ? "debt" : "receivable"}
+                </button>
+              </Tooltip>
+            </div>
+            <Toolbar query={query} setQuery={setQuery} sortBy={sortBy} setSortBy={setSortBy} sortDir={sortDir} setSortDir={setSortDir} statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+            {(tab === "owe" ? oweFiltered : owedFiltered).length === 0 ? (
+              <EmptyState icon={tab === "owe" ? "trending-down" : "trending-up"} title={`No ${tab === "owe" ? "debts" : "receivables"} found`} sub="Try adjusting your search or filters, or add a new entry." cta={`Add ${tab === "owe" ? "debt" : "receivable"}`} onCta={() => openNew(tab === "owe" ? "debt" : "receivable")} />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(tab === "owe" ? oweFiltered : owedFiltered).map((d, i) => (
+                  <ItemCard key={d.id} item={d} rank={tab === "owe" ? rankMap[d.id] : null} accentColor={tab === "owe" ? strategyColor : { text: "var(--azure)", dim: "var(--azure-dim)", border: "#1c3a5c" }} onOpen={setModalItem} delay={i * 40} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === "contacts" && <ContactsView items={items} onOpenItem={setModalItem} />}
+        {tab === "history" && <HistoryView items={items} />}
+        {tab === "stats" && <StatisticsView items={items} sim={sim} extraBudget={extraBudget} strategy={strategy} />}
+      </main>
+
+      {modalItem !== null && (
+        <ItemModal
+          initial={modalItem.id ? modalItem : null}
+          defaultType={modalDefaultType}
+          onClose={() => setModalItem(null)}
+          onSave={handleSaveItem}
+          onDelete={handleDeleteItem}
+          onSettle={handleSettleItem}
+          onTransact={handleTransact}
+        />
+      )}
+      {showDataPanel && <DataPanel items={items} onClose={() => setShowDataPanel(false)} onImport={handleImportRows} />}
+    </div>
+  );
+}
+
+/* ============================= ROOT APP ============================= */
+function App() {
+  const [phase, setPhase] = useState("loading");
+  const [error, setError] = useState("");
+  const [data, setData] = useState(null);
+  const keyRef = useRef(null);
+  const firstPinRef = useRef("");
+  const storeMetaRef = useRef(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) { setPhase("setup-create"); return; }
+    try { storeMetaRef.current = JSON.parse(raw); setPhase("unlock"); }
+    catch (e) { setPhase("setup-create"); }
+  }, []);
+
+  const persist = useCallback(async (nextData) => {
+    if (!keyRef.current || !storeMetaRef.current) return;
+    const { iv, cipher } = await encryptJSON(keyRef.current, nextData);
+    const record = { salt: storeMetaRef.current.salt, iv, cipher };
+    storeMetaRef.current = record;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+  }, []);
+
+  const saveData = useCallback((updater) => {
+    setData((prev) => { const next = typeof updater === "function" ? updater(prev) : updater; persist(next); return next; });
+  }, [persist]);
+
+  const handleSetupPin = async (pin) => {
+    if (phase === "setup-create") { firstPinRef.current = pin; setError(""); setPhase("setup-confirm"); return; }
+    if (phase === "setup-confirm") {
+      if (pin !== firstPinRef.current) { setError("PINs don't match — try again."); setPhase("setup-create"); firstPinRef.current = ""; return; }
+      const salt = randomSaltB64();
+      const key = await deriveKey(pin, salt);
+      keyRef.current = key;
+      const initial = { items: [], extraBudget: 200, strategy: "avalanche" };
+      const { iv, cipher } = await encryptJSON(key, initial);
+      const record = { salt, iv, cipher };
+      storeMetaRef.current = record;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+      setData(initial); setPhase("dashboard");
+    }
+  };
+
+  const handleUnlock = async (pin) => {
+    try {
+      const meta = storeMetaRef.current;
+      const key = await deriveKey(pin, meta.salt);
+      const decrypted = migrateData(await decryptJSON(key, meta.iv, meta.cipher));
+      keyRef.current = key; setData(decrypted); setError(""); setPhase("dashboard");
+    } catch (e) { setError("Incorrect PIN — try again."); }
+  };
+
+  const handleLock = () => { keyRef.current = null; setData(null); setError(""); setPhase("unlock"); };
+
+  if (phase === "loading") return <div className="min-h-screen flex items-center justify-center text-[var(--text-dim)] text-sm">Loading…</div>;
+  if (phase === "setup-create" || phase === "setup-confirm") return <LockScreen mode={phase} onSubmitPin={handleSetupPin} error={error} />;
+  if (phase === "unlock") return <LockScreen mode="unlock" onSubmitPin={handleUnlock} error={error} />;
+  if (phase === "dashboard" && data) return <Dashboard data={data} saveData={saveData} onLock={handleLock} />;
+  return null;
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
