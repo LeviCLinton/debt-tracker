@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Ledger — Debt &amp; Receivables Dashboard</title>
 <script>
   // The Tailwind Play CDN and in-browser Babel transformer both print a
@@ -28,6 +28,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -55,6 +56,15 @@
   }
   *{box-sizing:border-box;}
   html,body{background:var(--bg-base);}
+  html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  html,body{ max-width:100%; overflow-x:hidden; }
+  body{ padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
+  .min-h-screen{ min-height:100vh; min-height:100dvh; }
+  img, svg { max-width:100%; }
+  @media (hover: none) and (pointer: coarse){
+    /* Touch devices: focus-within already opens tooltips on tap; give a touch-friendly minimum size to anything acting as a control. */
+    .icon-btn, .keypad-btn, .tab-btn { min-height:36px; }
+  }
   body{
     margin:0;
     font-family:'Inter',sans-serif;
@@ -177,6 +187,28 @@
   .no-scrollbar{ scrollbar-width:none; -ms-overflow-style:none; }
   .no-scrollbar::-webkit-scrollbar{ display:none; }
 
+  .auth-bg-orb{ position:fixed; border-radius:50%; filter:blur(70px); opacity:0.32; pointer-events:none; z-index:0; }
+  .auth-orb-1{ width:440px; height:440px; background:radial-gradient(circle, #34d399, transparent 70%); top:-140px; left:-120px; animation: driftA 15s ease-in-out infinite; }
+  .auth-orb-2{ width:400px; height:400px; background:radial-gradient(circle, #3b9eff, transparent 70%); bottom:-160px; right:-120px; animation: driftB 17s ease-in-out infinite; }
+  .auth-orb-3{ width:260px; height:260px; background:radial-gradient(circle, #fbbf24, transparent 70%); top:40%; right:10%; animation: driftA 20s ease-in-out infinite reverse; opacity:0.18; }
+  @keyframes driftA{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(36px,26px) scale(1.06); } }
+  @keyframes driftB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-30px,-34px) scale(1.05); } }
+
+  .strength-bar{ height:5px; border-radius:999px; background:#1c2740; overflow:hidden; }
+  .strength-fill{ height:100%; border-radius:999px; transition:width 0.35s cubic-bezier(0.16,1,0.3,1), background 0.35s ease; }
+
+  .social-btn{ transition: background 0.15s ease, transform 0.12s ease, border-color 0.15s ease; }
+  .social-btn:hover{ background:var(--surface-hover); transform:translateY(-1px); border-color:#2c3a54; }
+  .social-btn:active{ transform:scale(0.98); }
+
+  .recovery-code-capsule{ font-family:'JetBrains Mono',monospace; letter-spacing:0.06em; }
+
+  @keyframes gentlePop{
+    0%{ opacity:0; transform:scale(0.9) translateY(6px); }
+    100%{ opacity:1; transform:scale(1) translateY(0); }
+  }
+  .anim-pop{ animation: gentlePop 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+
   .tooltip-anchor{ position:relative; display:inline-flex; }
   .tooltip-bubble{
     position:absolute;
@@ -280,6 +312,10 @@ const ICON_PATHS = {
   "badge-check": <><path d="M12 2l2.4 1.4 2.8-.3 1.1 2.6 2.6 1.1-.3 2.8L22 12l-1.4 2.4.3 2.8-2.6 1.1-1.1 2.6-2.8-.3L12 22l-2.4-1.4-2.8.3-1.1-2.6-2.6-1.1.3-2.8L2 12l1.4-2.4-.3-2.8 2.6-1.1 1.1-2.6 2.8.3Z"/><path d="m9 12 2 2 4-4"/></>,
   pencil: <><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>,
   paperclip: <><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></>,
+  mail: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></>,
+  eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
+  "eye-off": <><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6 0 10 7 10 7a17 17 0 0 1-3.1 3.87M6.6 6.6A17.3 17.3 0 0 0 2 11s4 7 10 7a9.3 9.3 0 0 0 4.4-1.1M9.9 14.1a3 3 0 1 0 4.2-4.2"/><path d="M2 2l20 20"/></>,
+  key: <><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15 19 4M17 6l2 2M14 9l2 2"/></>,
 };
 
 function Icon({ name, size = 18, className = "", style = {} }) {
@@ -343,6 +379,102 @@ async function decryptJSON(key, ivB64, cipherB64) {
   return JSON.parse(dec.decode(plain));
 }
 function randomSaltB64() { return toB64(crypto.getRandomValues(new Uint8Array(16)).buffer); }
+
+/* --- Envelope encryption: a random Data Encryption Key (DEK) encrypts the
+   actual app data. The DEK itself is "wrapped" (encrypted) separately under
+   the PIN/password key AND under a recovery-code key. This means changing
+   your PIN/password or resetting via recovery code never requires touching
+   or re-encrypting the bulk data — only its small wrapped key. --- */
+async function generateDEK() {
+  return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+}
+async function wrapDEK(wrapperKey, dek) {
+  const raw = await crypto.subtle.exportKey("raw", dek);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, wrapperKey, raw);
+  return { iv: toB64(iv), cipher: toB64(cipher) };
+}
+async function unwrapDEK(wrapperKey, ivB64, cipherB64) {
+  const iv = new Uint8Array(fromB64(ivB64));
+  const raw = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, wrapperKey, fromB64(cipherB64));
+  return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, true, ["encrypt", "decrypt"]);
+}
+
+/* --- Recovery code: a locally-generated backup key. Since this app has no
+   server, it can't email a reset link — this code is the honest client-side
+   equivalent of "forgot password". --- */
+function generateRecoveryCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous 0/O/1/I
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  let raw = "";
+  for (let i = 0; i < 12; i++) raw += chars[bytes[i] % chars.length];
+  return raw.match(/.{1,4}/g).join("-");
+}
+function normalizeRecoveryInput(str) {
+  const clean = (str || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return clean.match(/.{1,4}/g)?.join("-") || clean;
+}
+
+/* --- TOTP (RFC 6238) two-factor codes, computed entirely client-side with
+   Web Crypto's HMAC-SHA1 — compatible with Google Authenticator, Authy, etc. --- */
+function base32Encode(bytes) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0, value = 0, out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    value = (value << 8) | bytes[i];
+    bits += 8;
+    while (bits >= 5) { out += alphabet[(value >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  if (bits > 0) out += alphabet[(value << (5 - bits)) & 31];
+  return out;
+}
+function base32Decode(str) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = str.toUpperCase().replace(/[^A-Z2-7]/g, "");
+  let bits = 0, value = 0; const bytes = [];
+  for (let i = 0; i < clean.length; i++) {
+    value = (value << 5) | alphabet.indexOf(clean[i]);
+    bits += 5;
+    if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 0xff); bits -= 8; }
+  }
+  return new Uint8Array(bytes);
+}
+function generateTotpSecret() { return base32Encode(crypto.getRandomValues(new Uint8Array(20))); }
+async function hotpCode(secretBytes, counter) {
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  view.setUint32(0, Math.floor(counter / 2 ** 32), false);
+  view.setUint32(4, counter >>> 0, false);
+  const key = await crypto.subtle.importKey("raw", secretBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, buf));
+  const offset = sig[sig.length - 1] & 0xf;
+  const bin = ((sig[offset] & 0x7f) << 24) | ((sig[offset + 1] & 0xff) << 16) | ((sig[offset + 2] & 0xff) << 8) | (sig[offset + 3] & 0xff);
+  return String(bin % 1000000).padStart(6, "0");
+}
+async function totpCodeAt(secretBase32, timeMs, step = 30) {
+  const counter = Math.floor(timeMs / 1000 / step);
+  return hotpCode(base32Decode(secretBase32), counter);
+}
+async function verifyTotp(secretBase32, code, windowSteps = 1) {
+  const now = Date.now();
+  for (let w = -windowSteps; w <= windowSteps; w++) {
+    if ((await totpCodeAt(secretBase32, now + w * 30000)) === code) return true;
+  }
+  return false;
+}
+
+/* --- Password strength: a lightweight local heuristic (no external library). --- */
+function passwordStrength(pw) {
+  if (!pw) return { score: 0, label: "Too short" };
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const labels = ["Very weak", "Weak", "Fair", "Good", "Strong", "Very strong"];
+  return { score, label: labels[score] };
+}
 
 const STORAGE_KEY = "ledger_debtdash_v2";
 
@@ -435,7 +567,7 @@ function toCSV(rows, headers) {
 
 /* ============================= DATA MIGRATION ============================= */
 function migrateData(raw) {
-  if (raw && raw.items) return raw;
+  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, ...raw };
   if (raw && raw.debts) {
     const items = raw.debts.map((d) => ({
       id: d.id, type: "debt", name: d.name, contact: "", contactImage: null,
@@ -443,9 +575,9 @@ function migrateData(raw) {
       minPayment: d.minPayment || 0, dueDate: "", reminderDays: 3, notes: "",
       status: "active", createdAt: new Date().toISOString(), settledAt: null, history: [],
     }));
-    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche" };
+    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" } };
   }
-  return { items: [], extraBudget: 200, strategy: "avalanche" };
+  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" } };
 }
 
 /* ============================= PAYOFF SIMULATION (debts only) ============================= */
@@ -528,7 +660,30 @@ function contactSummaries(items) {
   return [...map.values()].sort((a, b) => (b.debtTotal + b.receivableTotal) - (a.debtTotal + a.receivableTotal));
 }
 
-/* ============================= LOCK SCREEN ============================= */
+/* ============================= AUTH SCREENS ============================= */
+function AuthBackground() {
+  return (
+    <>
+      <div className="auth-bg-orb auth-orb-1"></div>
+      <div className="auth-bg-orb auth-orb-2"></div>
+      <div className="auth-bg-orb auth-orb-3"></div>
+    </>
+  );
+}
+
+function GoogleG({ size = 16 }) {
+  // A simplified, generic four-color "G" mark to represent Google sign-in —
+  // not a reproduction of the official trademarked logo.
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" style={{ display: "inline-block", flexShrink: 0 }}>
+      <path d="M19.6 10.23c0-.68-.06-1.36-.18-2H10v3.79h5.4a4.66 4.66 0 0 1-2 3.06v2.5h3.24c1.9-1.75 2.96-4.33 2.96-7.35z" fill="#4285F4"/>
+      <path d="M10 20c2.7 0 4.96-.9 6.62-2.42l-3.24-2.5c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.75-5.6-4.12H1.06v2.59A10 10 0 0 0 10 20z" fill="#34A853"/>
+      <path d="M4.4 11.92a6.02 6.02 0 0 1 0-3.84V5.49H1.06a10 10 0 0 0 0 9.02l3.34-2.59z" fill="#FBBC05"/>
+      <path d="M10 3.96c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.96 9.96 0 0 0 10 0 10 10 0 0 0 1.06 5.49l3.34 2.59C5.2 5.72 7.4 3.96 10 3.96z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
 function PinPad({ onDigit, onBack }) {
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
   return (
@@ -549,52 +704,323 @@ function PinPad({ onDigit, onBack }) {
   );
 }
 
-function LockScreen({ mode, onSubmitPin, error }) {
-  const [pin, setPin] = useState("");
-  const [shake, setShake] = useState(false);
-  const maxLen = 6;
+/* --- Welcome screen: first run only. Sets the tone + lets the person choose
+   how they want to unlock the app going forward. --- */
+function SignUpScreen({ onContinue }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const canContinue = name.trim().length >= 2 && emailValid;
 
-  useEffect(() => { setPin(""); }, [mode]);
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name="landmark" size={28} className="text-[var(--emerald)]" />
+          </div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-center anim-in" style={{ animationDelay: "60ms" }}>Welcome to Ledger</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2.5 max-w-[300px] anim-in" style={{ animationDelay: "120ms" }}>
+            Track what you owe and who owes you — encrypted and private, entirely on this device. Let's create your account.
+          </p>
+        </div>
+        <div className="glass rounded-3xl p-5 sm:p-7 space-y-4">
+          <div className="anim-in" style={{ animationDelay: "160ms" }}>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Full name</label>
+            <input autoFocus type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Amara Okafor"
+              onKeyDown={(e) => { if (e.key === "Enter" && canContinue) onContinue(name.trim(), email.trim()); }}
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 text-sm focus-ring focus:border-[var(--emerald)]" />
+          </div>
+          <div className="anim-in" style={{ animationDelay: "220ms" }}>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Email address</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+              onKeyDown={(e) => { if (e.key === "Enter" && canContinue) onContinue(name.trim(), email.trim()); }}
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 text-sm focus-ring focus:border-[var(--emerald)]" />
+            <p className="text-[11px] text-[var(--text-dim)] mt-1.5">Stored only on this device — used to greet you and label your account, never sent anywhere.</p>
+          </div>
+          <button onClick={() => canContinue && onContinue(name.trim(), email.trim())} disabled={!canContinue}
+            className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all anim-in" style={{ animationDelay: "280ms", background: canContinue ? "var(--emerald)" : "var(--surface)", color: canContinue ? "#06231a" : "var(--text-dim)" }}>
+            Create account
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --- Generic credential screen: reused for PIN entry, password entry,
+   confirming, unlocking, and recovery-code entry. --- */
+function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, error, submitLabel, showForgot, onForgot, showSocial, showStrength }) {
+  const [value, setValue] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [shake, setShake] = useState(false);
+  const [socialMsg, setSocialMsg] = useState("");
+
   useEffect(() => {
     if (error) { setShake(true); const t = setTimeout(() => setShake(false), 500); return () => clearTimeout(t); }
   }, [error]);
 
-  const handleDigit = (d) => { if (pin.length < maxLen) setPin(pin + d); };
-  const handleBack = () => setPin((p) => p.slice(0, -1));
-  const handleSubmit = () => { if (pin.length >= 4) onSubmitPin(pin); };
+  const handleDigit = (d) => { if (value.length < 6) setValue(value + d); };
+  const handleBack = () => setValue((v) => v.slice(0, -1));
+  const canSubmit = mode === "pin" ? value.length >= 4 : mode === "recovery" ? value.replace(/[^A-Z0-9]/gi, "").length >= 8 : value.length >= 4;
+  const submit = () => { if (canSubmit) onSubmit(mode === "recovery" ? normalizeRecoveryInput(value) : value); };
 
-  const titles = {
-    "setup-create": ["Create your PIN", "Choose a 4–6 digit PIN to encrypt your data on this device."],
-    "setup-confirm": ["Confirm your PIN", "Enter it once more to lock it in."],
-    unlock: ["Welcome back", "Enter your PIN to unlock your dashboard."],
-  };
-  const [title, sub] = titles[mode];
+  const strength = passwordStrength(value);
+  const strengthColors = ["#fb7185", "#fb7185", "#fbbf24", "#fbbf24", "#34d399", "#34d399"];
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-5 py-10">
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow">
-            <Icon name={mode === "unlock" ? "lock" : "shield-check"} size={28} className="text-[var(--emerald)]" />
+          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name={icon} size={28} className="text-[var(--emerald)]" />
           </div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-center">{title}</h1>
-          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[280px]">{sub}</p>
+          {subtitle && <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">{subtitle}</p>}
         </div>
-        <div className={`glass rounded-3xl p-8 ${shake ? "anim-shake" : ""}`}>
-          <div className="flex items-center justify-center gap-3 mb-8 h-4">
-            {Array.from({ length: Math.max(pin.length, 4) }).map((_, i) => (
-              <div key={i} className={`pin-dot ${i < pin.length ? "filled" : ""}`}></div>
-            ))}
-          </div>
-          {error && <p className="text-[var(--danger)] text-xs text-center -mt-5 mb-5 font-medium">{error}</p>}
-          <PinPad onDigit={handleDigit} onBack={handleBack} />
-          <button onClick={handleSubmit} disabled={pin.length < 4}
+
+        <div className={`glass rounded-3xl p-6 sm:p-8 ${shake ? "anim-shake" : ""}`}>
+          {mode === "pin" ? (
+            <>
+              <div className="flex items-center justify-center gap-3 mb-8 h-4">
+                {Array.from({ length: Math.max(value.length, 4) }).map((_, i) => (
+                  <div key={i} className={`pin-dot ${i < value.length ? "filled" : ""}`}></div>
+                ))}
+              </div>
+              {error && <p className="text-[var(--danger)] text-xs text-center -mt-5 mb-5 font-medium">{error}</p>}
+              <PinPad onDigit={handleDigit} onBack={handleBack} />
+            </>
+          ) : (
+            <>
+              <div className="relative mb-3">
+                <input
+                  autoFocus
+                  type={mode === "password" && !showPw ? "password" : "text"}
+                  value={value}
+                  onChange={(e) => setValue(mode === "recovery" ? e.target.value.toUpperCase() : e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+                  placeholder={mode === "recovery" ? "XXXX-XXXX-XXXX" : "Enter your password"}
+                  className={`w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 ${mode === "recovery" ? "font-mono tracking-widest text-center" : ""} text-sm focus-ring focus:border-[var(--emerald)] pr-11`}
+                />
+                {mode === "password" && (
+                  <button type="button" onClick={() => setShowPw((s) => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] hover:text-[var(--text-primary)]" aria-label="Toggle password visibility">
+                    <Icon name={showPw ? "eye-off" : "eye"} size={16} />
+                  </button>
+                )}
+              </div>
+              {showStrength && mode === "password" && value && (
+                <div className="mb-3 anim-in">
+                  <div className="strength-bar mb-1.5">
+                    <div className="strength-fill" style={{ width: `${(strength.score / 5) * 100}%`, background: strengthColors[strength.score] }}></div>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-dim)]">{strength.label} — aim for 12+ characters mixing letters, numbers, and symbols.</p>
+                </div>
+              )}
+              {error && <p className="text-[var(--danger)] text-xs text-center mb-3 font-medium">{error}</p>}
+            </>
+          )}
+
+          <button onClick={submit} disabled={!canSubmit}
             className="w-full mt-6 h-12 rounded-2xl font-display font-semibold text-[15px] transition-all focus-ring disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ background: pin.length >= 4 ? "var(--emerald)" : "var(--surface)", color: pin.length >= 4 ? "#06231a" : "var(--text-dim)" }}>
-            {mode === "unlock" ? "Unlock" : "Continue"}
+            style={{ background: canSubmit ? "var(--emerald)" : "var(--surface)", color: canSubmit ? "#06231a" : "var(--text-dim)" }}>
+            {submitLabel}
+          </button>
+
+          {showForgot && (
+            <button onClick={onForgot} className="w-full text-center text-[12px] text-[var(--text-muted)] hover:text-[var(--emerald)] mt-4 focus-ring transition-colors">
+              Forgot your PIN or password?
+            </button>
+          )}
+        </div>
+
+        {showSocial && (
+          <div className="mt-6 anim-in" style={{ animationDelay: "80ms" }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-[var(--border-soft)]"></div>
+              <span className="text-[11px] text-[var(--text-dim)] uppercase tracking-widest">or</span>
+              <div className="flex-1 h-px bg-[var(--border-soft)]"></div>
+            </div>
+            <div className="space-y-2.5">
+              <button onClick={() => setSocialMsg(socialMsg === "google" ? "" : "google")} className="social-btn w-full h-11 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] flex items-center justify-center gap-2.5 text-sm font-medium focus-ring">
+                <GoogleG size={16} /> Continue with Google
+              </button>
+              <button onClick={() => setSocialMsg(socialMsg === "email" ? "" : "email")} className="social-btn w-full h-11 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] flex items-center justify-center gap-2.5 text-sm font-medium focus-ring">
+                <Icon name="mail" size={16} /> Continue with email
+              </button>
+            </div>
+            {socialMsg && (
+              <div className="mt-3 glass rounded-xl p-3.5 text-[12px] text-[var(--text-muted)] leading-relaxed anim-pop">
+                Ledger runs entirely offline in your browser with no account server, so {socialMsg === "google" ? "Google" : "email"} sign-in isn't something it can actually do — your PIN or password is what encrypts and protects your data here.
+              </div>
+            )}
+          </div>
+        )}
+
+        <p className="text-center text-[var(--text-dim)] text-xs mt-6">Encrypted locally with AES-GCM. Nothing leaves this device.</p>
+      </div>
+    </div>
+  );
+}
+
+/* --- Shown once right after setup (and again after any recovery reset):
+   the one and only way back in if the PIN/password is forgotten. --- */
+function RecoveryRevealScreen({ code, note, onContinue }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch (e) { /* ignore */ }
+  };
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--amber-dim)] border border-[#5c451a] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name="key" size={26} className="text-[var(--amber)]" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-center">Save your recovery code</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">
+            {note || "Since Ledger has no server and can't email you a reset link, this code is the only way back in if you forget your PIN or password."}
+          </p>
+        </div>
+        <div className="glass rounded-3xl p-5 sm:p-7 text-center">
+          <div className="recovery-code-capsule text-xl font-semibold px-4 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] mb-4 select-all anim-pop">{code}</div>
+          <button onClick={copy} className="social-btn inline-flex items-center gap-2 text-[13px] text-[var(--emerald)] mb-6 focus-ring">
+            <Icon name={copied ? "check-circle" : "receipt"} size={14} /> {copied ? "Copied!" : "Copy to clipboard"}
+          </button>
+          <label className="flex items-start gap-2.5 text-left mb-5 cursor-pointer">
+            <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[var(--emerald)]" />
+            <span className="text-[13px] text-[var(--text-muted)]">I've saved this somewhere safe — I understand Ledger can't recover it for me.</span>
+          </label>
+          <button onClick={onContinue} disabled={!confirmed}
+            className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all"
+            style={{ background: confirmed ? "var(--emerald)" : "var(--surface)", color: confirmed ? "#06231a" : "var(--text-dim)" }}>
+            Continue
           </button>
         </div>
-        <p className="text-center text-[var(--text-dim)] text-xs mt-6">Encrypted locally with AES-GCM. Nothing leaves this device.</p>
+      </div>
+    </div>
+  );
+}
+
+function TwoFAOfferScreen({ onEnable, onSkip }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#1c3a5c] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name="shield-check" size={26} className="text-[var(--azure)]" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-center">Add two-factor authentication?</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">
+            Require a 6-digit code from an authenticator app — Google Authenticator, Authy, 1Password, etc. — every time you unlock, on top of your PIN or password.
+          </p>
+        </div>
+        <div className="glass rounded-3xl p-5 sm:p-6 space-y-3">
+          <button onClick={onEnable} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring transition-transform active:scale-[0.98]" style={{ background: "var(--emerald)", color: "#06231a" }}>Set up 2FA</button>
+          <button onClick={onSkip} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] text-[var(--text-muted)] border border-[var(--border-soft)] focus-ring hover:bg-[var(--surface-hover)] transition-colors">Skip for now</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TwoFASetupScreen({ secret, otpauthUrl, onVerify, onSkip, error }) {
+  const qrRef = useRef(null);
+  const [code, setCode] = useState("");
+  const [shake, setShake] = useState(false);
+
+  useEffect(() => {
+    if (window.QRCode && qrRef.current) {
+      qrRef.current.innerHTML = "";
+      new window.QRCode(qrRef.current, { text: otpauthUrl, width: 168, height: 168, colorDark: "#0a0e15", colorLight: "#ffffff" });
+    }
+  }, [otpauthUrl]);
+  useEffect(() => {
+    if (error) { setShake(true); const t = setTimeout(() => setShake(false), 500); return () => clearTimeout(t); }
+  }, [error]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-6">
+          <h1 className="font-display text-2xl font-semibold text-center">Scan to connect</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">Scan this QR with your authenticator app, or enter the code manually.</p>
+        </div>
+        <div className={`glass rounded-3xl p-5 sm:p-6 text-center ${shake ? "anim-shake" : ""}`}>
+          <div ref={qrRef} className="flex justify-center mb-4 bg-white rounded-2xl p-3 w-fit mx-auto anim-pop"></div>
+          <div className="recovery-code-capsule text-[13px] px-3 py-2 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] mb-5 select-all break-all">{secret}</div>
+          <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Enter the 6-digit code to confirm</label>
+          <input autoFocus value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onKeyDown={(e) => { if (e.key === "Enter" && code.length === 6) onVerify(code); }}
+            className="w-full text-center tracking-[0.4em] font-mono text-lg bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl py-3 focus-ring focus:border-[var(--emerald)] mb-2" placeholder="000000" />
+          {error && <p className="text-[var(--danger)] text-xs mb-2 font-medium">{error}</p>}
+          <button onClick={() => onVerify(code)} disabled={code.length !== 6}
+            className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring mt-3 transition-all"
+            style={{ background: code.length === 6 ? "var(--emerald)" : "var(--surface)", color: code.length === 6 ? "#06231a" : "var(--text-dim)" }}>
+            Confirm &amp; enable
+          </button>
+          <button onClick={onSkip} className="w-full text-center text-[12px] text-[var(--text-muted)] hover:text-[var(--text-primary)] mt-4 focus-ring">Skip for now</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TwoFAVerifyScreen({ onVerify, error }) {
+  const [code, setCode] = useState("");
+  const [shake, setShake] = useState(false);
+  useEffect(() => {
+    if (error) { setShake(true); const t = setTimeout(() => setShake(false), 500); return () => clearTimeout(t); }
+  }, [error]);
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#1c3a5c] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name="shield-check" size={26} className="text-[var(--azure)]" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-center">Two-factor code</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[280px]">Enter the 6-digit code from your authenticator app.</p>
+        </div>
+        <div className={`glass rounded-3xl p-5 sm:p-7 ${shake ? "anim-shake" : ""}`}>
+          <input autoFocus value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onKeyDown={(e) => { if (e.key === "Enter" && code.length === 6) onVerify(code); }}
+            className="w-full text-center tracking-[0.4em] font-mono text-lg bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl py-3 focus-ring focus:border-[var(--emerald)] mb-2" placeholder="000000" />
+          {error && <p className="text-[var(--danger)] text-xs text-center mb-3 font-medium">{error}</p>}
+          <button onClick={() => onVerify(code)} disabled={code.length !== 6}
+            className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring mt-2 transition-all"
+            style={{ background: code.length === 6 ? "var(--emerald)" : "var(--surface)", color: code.length === 6 ? "#06231a" : "var(--text-dim)" }}>
+            Verify
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Small intermediate step used inside the "forgot password" flow to pick a
+   new unlock method before setting the new credential. */
+function ChooseModeScreen({ title, subtitle, onChoose }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name="shield-check" size={28} className="text-[var(--emerald)]" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-center">{title}</h1>
+          {subtitle && <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">{subtitle}</p>}
+        </div>
+        <div className="glass rounded-3xl p-5 sm:p-6 space-y-3">
+          <button onClick={() => onChoose("pin")} className="social-btn w-full flex items-center gap-3.5 px-4 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] focus-ring text-left">
+            <div className="w-10 h-10 rounded-xl bg-[var(--emerald-dim)] flex items-center justify-center shrink-0"><Icon name="lock" size={18} className="text-[var(--emerald)]" /></div>
+            <div><div className="font-display font-semibold text-sm">Use a PIN</div><div className="text-[12px] text-[var(--text-dim)]">A quick 4–6 digit code</div></div>
+          </button>
+          <button onClick={() => onChoose("password")} className="social-btn w-full flex items-center gap-3.5 px-4 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] focus-ring text-left">
+            <div className="w-10 h-10 rounded-xl bg-[var(--azure-dim)] flex items-center justify-center shrink-0"><Icon name="shield-check" size={18} className="text-[var(--azure)]" /></div>
+            <div><div className="font-display font-semibold text-sm">Use a password</div><div className="text-[12px] text-[var(--text-dim)]">Stronger protection — recommended</div></div>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1212,7 +1638,7 @@ function ContactsView({ items, onOpenItem }) {
             className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-10 pr-3 py-2.5 text-sm focus-ring focus:border-[var(--emerald)]" />
         </div>
       </Tooltip>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {summaries.map((c, i) => {
           const net = c.receivableTotal - c.debtTotal;
           const isOpen = expanded === c.name;
@@ -1800,7 +2226,7 @@ function Dashboard({ data, saveData, onLock }) {
             {(tab === "owe" ? oweFiltered : owedFiltered).length === 0 ? (
               <EmptyState icon={tab === "owe" ? "trending-down" : "trending-up"} title={`No ${tab === "owe" ? "debts" : "receivables"} found`} sub="Try adjusting your search or filters, or add a new entry." cta={`Add ${tab === "owe" ? "debt" : "receivable"}`} onCta={() => openNew(tab === "owe" ? "debt" : "receivable")} />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {(tab === "owe" ? oweFiltered : owedFiltered).map((d, i) => (
                   <ItemCard key={d.id} item={d} rank={tab === "owe" ? rankMap[d.id] : null} accentColor={tab === "owe" ? strategyColor : { text: "var(--azure)", dim: "var(--azure-dim)", border: "#1c3a5c" }} onOpen={setModalItem} delay={i * 40} />
                 ))}
@@ -1835,61 +2261,301 @@ function App() {
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
-  const keyRef = useRef(null);
-  const firstPinRef = useRef("");
-  const storeMetaRef = useRef(null);
+
+  const keyRef = useRef(null);           // the in-memory DEK (Data Encryption Key)
+  const storeRef = useRef(null);         // { authMode, wrappedMain, wrappedRecovery, data, displayName }
+  const setupModeRef = useRef("pin");    // mode chosen after sign-up / during the forgot flow
+  const firstCredRef = useRef("");       // holds the first entry while confirming
+  const recoveryCodeRef = useRef("");    // freshly generated code, pending the reveal screen
+  const recoveryNoteRef = useRef("");    // custom copy for the reveal screen (setup vs. upgrade vs. reset)
+  const pendingDataRef = useRef(null);   // decrypted data waiting on a 2FA check
+  const pendingTotpSecretRef = useRef(""); // secret awaiting confirmation during 2FA setup
+  const legacySaltRef = useRef("");      // only used during one-time legacy-format migration
+  const signupNameRef = useRef("");      // new-account details, captured before the credential is set
+  const signupEmailRef = useRef("");
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) { setPhase("setup-create"); return; }
-    try { storeMetaRef.current = JSON.parse(raw); setPhase("unlock"); }
-    catch (e) { setPhase("setup-create"); }
+    if (!raw) { setPhase("signup"); return; }
+    try {
+      const parsed = JSON.parse(raw);
+      storeRef.current = parsed;
+      setPhase("unlock");
+    } catch (e) { setPhase("signup"); }
   }, []);
 
   const persist = useCallback(async (nextData) => {
-    if (!keyRef.current || !storeMetaRef.current) return;
-    const { iv, cipher } = await encryptJSON(keyRef.current, nextData);
-    const record = { salt: storeMetaRef.current.salt, iv, cipher };
-    storeMetaRef.current = record;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+    if (!keyRef.current || !storeRef.current) return;
+    const dataBlob = await encryptJSON(keyRef.current, nextData);
+    storeRef.current = { ...storeRef.current, data: dataBlob };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
   }, []);
 
   const saveData = useCallback((updater) => {
     setData((prev) => { const next = typeof updater === "function" ? updater(prev) : updater; persist(next); return next; });
   }, [persist]);
 
-  const handleSetupPin = async (pin) => {
-    if (phase === "setup-create") { firstPinRef.current = pin; setError(""); setPhase("setup-confirm"); return; }
-    if (phase === "setup-confirm") {
-      if (pin !== firstPinRef.current) { setError("PINs don't match — try again."); setPhase("setup-create"); firstPinRef.current = ""; return; }
-      const salt = randomSaltB64();
-      const key = await deriveKey(pin, salt);
-      keyRef.current = key;
-      const initial = { items: [], extraBudget: 200, strategy: "avalanche" };
-      const { iv, cipher } = await encryptJSON(key, initial);
-      const record = { salt, iv, cipher };
-      storeMetaRef.current = record;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
-      setData(initial); setPhase("dashboard");
+  /* ---------- first-run setup: create account -> choose PIN/password -> confirm ---------- */
+  const handleSignUpContinue = (name, email) => {
+    signupNameRef.current = name;
+    signupEmailRef.current = email;
+    setError("");
+    setPhase("choose-mode-signup");
+  };
+
+  const handleChooseMode = (mode) => {
+    setupModeRef.current = mode;
+    firstCredRef.current = "";
+    setError("");
+    setPhase("create");
+  };
+
+  const handleCreateSubmit = (val) => {
+    firstCredRef.current = val;
+    setError("");
+    setPhase("confirm");
+  };
+
+  const handleConfirmSubmit = async (val) => {
+    if (val !== firstCredRef.current) {
+      setError(setupModeRef.current === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
+      firstCredRef.current = "";
+      setPhase("create");
+      return;
+    }
+    const salt1 = randomSaltB64();
+    const key1 = await deriveKey(val, salt1);
+    const dek = await generateDEK();
+    const wrappedMain = await wrapDEK(key1, dek);
+    wrappedMain.salt = salt1;
+
+    const recoveryCode = generateRecoveryCode();
+    const salt2 = randomSaltB64();
+    const key2 = await deriveKey(recoveryCode, salt2);
+    const wrappedRecovery = await wrapDEK(key2, dek);
+    wrappedRecovery.salt = salt2;
+
+    const initial = {
+      items: [], extraBudget: 200, strategy: "avalanche",
+      security: { totpEnabled: false, totpSecret: null },
+      profile: { name: signupNameRef.current, email: signupEmailRef.current },
+    };
+    const dataBlob = await encryptJSON(dek, initial);
+
+    storeRef.current = { authMode: setupModeRef.current, wrappedMain, wrappedRecovery, data: dataBlob, displayName: signupNameRef.current };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+
+    keyRef.current = dek;
+    pendingDataRef.current = initial;
+    recoveryCodeRef.current = recoveryCode;
+    recoveryNoteRef.current = "";
+    setError("");
+    setPhase("recovery-reveal");
+  };
+
+  const handleRecoveryRevealContinue = () => setPhase("twofa-offer");
+
+  const handleTwoFAEnable = () => {
+    const secret = generateTotpSecret();
+    pendingTotpSecretRef.current = secret;
+    setError("");
+    setPhase("twofa-setup");
+  };
+
+  const enterDashboard = () => { setData(pendingDataRef.current); pendingDataRef.current = null; setPhase("dashboard"); };
+
+  const handleTwoFASkip = () => enterDashboard();
+
+  const handleTwoFAVerifySetup = async (code) => {
+    const ok = await verifyTotp(pendingTotpSecretRef.current, code);
+    if (!ok) { setError("That code didn't match — try again."); return; }
+    const updated = { ...pendingDataRef.current, security: { totpEnabled: true, totpSecret: pendingTotpSecretRef.current } };
+    pendingDataRef.current = updated;
+    await persist(updated); // keyRef.current (DEK) is already set from setup/unlock
+    setError("");
+    enterDashboard();
+  };
+
+  /* ---------- returning-user unlock ---------- */
+  const handleUnlockSubmit = async (cred) => {
+    const store = storeRef.current;
+    if (store && store.wrappedMain) {
+      try {
+        const key1 = await deriveKey(cred, store.wrappedMain.salt);
+        const dek = await unwrapDEK(key1, store.wrappedMain.iv, store.wrappedMain.cipher);
+        const decrypted = migrateData(await decryptJSON(dek, store.data.iv, store.data.cipher));
+        keyRef.current = dek;
+        setError("");
+        if (decrypted.security?.totpEnabled) { pendingDataRef.current = decrypted; setPhase("unlock-twofa"); }
+        else { setData(decrypted); setPhase("dashboard"); }
+      } catch (e) {
+        setError(store.authMode === "pin" ? "Incorrect PIN — try again." : "Incorrect password — try again.");
+      }
+      return;
+    }
+    // one-time migration path for the older, pre-recovery-code storage format
+    try {
+      const legacyKey = await deriveKey(cred, store.salt);
+      const legacyData = migrateData(await decryptJSON(legacyKey, store.iv, store.cipher));
+      const dek = await generateDEK();
+      const salt1 = randomSaltB64();
+      const key1 = await deriveKey(cred, salt1);
+      const wrappedMain = await wrapDEK(key1, dek);
+      wrappedMain.salt = salt1;
+      const recoveryCode = generateRecoveryCode();
+      const salt2 = randomSaltB64();
+      const key2 = await deriveKey(recoveryCode, salt2);
+      const wrappedRecovery = await wrapDEK(key2, dek);
+      wrappedRecovery.salt = salt2;
+      const dataBlob = await encryptJSON(dek, legacyData);
+      storeRef.current = { authMode: "pin", wrappedMain, wrappedRecovery, data: dataBlob };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+      keyRef.current = dek;
+      pendingDataRef.current = legacyData;
+      recoveryCodeRef.current = recoveryCode;
+      recoveryNoteRef.current = "Your security was just upgraded to support recovery codes and two-factor authentication. Save this new recovery code — it's the only way back in if you forget your PIN.";
+      setError("");
+      setPhase("recovery-reveal");
+    } catch (e) {
+      setError("Incorrect PIN — try again.");
     }
   };
 
-  const handleUnlock = async (pin) => {
+  const handleUnlockTwoFA = async (code) => {
+    const ok = await verifyTotp(pendingDataRef.current.security.totpSecret, code);
+    if (!ok) { setError("That code didn't match — try again."); return; }
+    setError("");
+    enterDashboard();
+  };
+
+  /* ---------- forgot PIN / password (local recovery code) ---------- */
+  const forgotDekRef = useRef(null);
+  const forgotDataRef = useRef(null);
+
+  const handleForgotStart = () => { setError(""); setPhase("forgot-code"); };
+
+  const handleForgotCodeSubmit = async (code) => {
     try {
-      const meta = storeMetaRef.current;
-      const key = await deriveKey(pin, meta.salt);
-      const decrypted = migrateData(await decryptJSON(key, meta.iv, meta.cipher));
-      keyRef.current = key; setData(decrypted); setError(""); setPhase("dashboard");
-    } catch (e) { setError("Incorrect PIN — try again."); }
+      const store = storeRef.current;
+      const key2 = await deriveKey(code, store.wrappedRecovery.salt);
+      const dek = await unwrapDEK(key2, store.wrappedRecovery.iv, store.wrappedRecovery.cipher);
+      const decrypted = migrateData(await decryptJSON(dek, store.data.iv, store.data.cipher));
+      forgotDekRef.current = dek;
+      forgotDataRef.current = decrypted;
+      setError("");
+      setPhase("forgot-choose-mode");
+    } catch (e) {
+      setError("That recovery code doesn't match — double-check and try again.");
+    }
+  };
+
+  const handleForgotChooseMode = (mode) => { setupModeRef.current = mode; firstCredRef.current = ""; setError(""); setPhase("forgot-create"); };
+
+  const handleForgotCreateSubmit = (val) => { firstCredRef.current = val; setError(""); setPhase("forgot-confirm"); };
+
+  const handleForgotConfirmSubmit = async (val) => {
+    if (val !== firstCredRef.current) {
+      setError(setupModeRef.current === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
+      firstCredRef.current = "";
+      setPhase("forgot-create");
+      return;
+    }
+    const dek = forgotDekRef.current;
+    const salt1 = randomSaltB64();
+    const key1 = await deriveKey(val, salt1);
+    const wrappedMain = await wrapDEK(key1, dek);
+    wrappedMain.salt = salt1;
+
+    const newRecoveryCode = generateRecoveryCode();
+    const salt2 = randomSaltB64();
+    const key2 = await deriveKey(newRecoveryCode, salt2);
+    const wrappedRecovery = await wrapDEK(key2, dek);
+    wrappedRecovery.salt = salt2;
+
+    storeRef.current = { ...storeRef.current, authMode: setupModeRef.current, wrappedMain, wrappedRecovery };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+
+    keyRef.current = dek;
+    pendingDataRef.current = forgotDataRef.current;
+    recoveryCodeRef.current = newRecoveryCode;
+    recoveryNoteRef.current = "Your PIN or password was reset. Here's your new recovery code — save it, since the old one no longer works.";
+    setError("");
+    setPhase("recovery-reveal-reset");
+  };
+
+  const handleRecoveryResetContinue = () => {
+    if (pendingDataRef.current?.security?.totpEnabled) setPhase("unlock-twofa");
+    else enterDashboard();
   };
 
   const handleLock = () => { keyRef.current = null; setData(null); setError(""); setPhase("unlock"); };
 
-  if (phase === "loading") return <div className="min-h-screen flex items-center justify-center text-[var(--text-dim)] text-sm">Loading…</div>;
-  if (phase === "setup-create" || phase === "setup-confirm") return <LockScreen mode={phase} onSubmitPin={handleSetupPin} error={error} />;
-  if (phase === "unlock") return <LockScreen mode="unlock" onSubmitPin={handleUnlock} error={error} />;
-  if (phase === "dashboard" && data) return <Dashboard data={data} saveData={saveData} onLock={handleLock} />;
-  return null;
+  if (phase === "loading") {
+    return <div className="min-h-screen flex items-center justify-center text-[var(--text-dim)] text-sm">Loading…</div>;
+  }
+
+  const wrapped = (children) => <><AuthBackground />{children}</>;
+
+  switch (phase) {
+    case "signup":
+      return wrapped(<div key="signup"><SignUpScreen onContinue={handleSignUpContinue} /></div>);
+    case "choose-mode-signup":
+      return wrapped(<div key="choose-mode-signup">
+        <ChooseModeScreen title="How would you like to sign in?" subtitle={`Nice to meet you, ${(signupNameRef.current || "there").split(" ")[0]} — choose how you'll unlock Ledger from now on.`} onChoose={handleChooseMode} />
+      </div>);
+    case "create":
+      return wrapped(<div key="create">
+        <CredentialScreen mode={setupModeRef.current} title={setupModeRef.current === "pin" ? "Create your PIN" : "Create your password"}
+          subtitle={setupModeRef.current === "pin" ? "Choose a 4–6 digit PIN to encrypt your data on this device." : "Choose a strong password to encrypt your data on this device."}
+          onSubmit={handleCreateSubmit} error={error} submitLabel="Continue" showStrength />
+      </div>);
+    case "confirm":
+      return wrapped(<div key="confirm">
+        <CredentialScreen mode={setupModeRef.current} title={setupModeRef.current === "pin" ? "Confirm your PIN" : "Confirm your password"}
+          subtitle="Enter it once more to lock it in." onSubmit={handleConfirmSubmit} error={error} submitLabel="Continue" />
+      </div>);
+    case "recovery-reveal":
+      return wrapped(<div key="recovery-reveal"><RecoveryRevealScreen code={recoveryCodeRef.current} note={recoveryNoteRef.current} onContinue={handleRecoveryRevealContinue} /></div>);
+    case "twofa-offer":
+      return wrapped(<div key="twofa-offer"><TwoFAOfferScreen onEnable={handleTwoFAEnable} onSkip={handleTwoFASkip} /></div>);
+    case "twofa-setup": {
+      const otpauthUrl = `otpauth://totp/Ledger:local?secret=${pendingTotpSecretRef.current}&issuer=Ledger&digits=6&period=30`;
+      return wrapped(<div key="twofa-setup"><TwoFASetupScreen secret={pendingTotpSecretRef.current} otpauthUrl={otpauthUrl} onVerify={handleTwoFAVerifySetup} onSkip={handleTwoFASkip} error={error} /></div>);
+    }
+    case "unlock": {
+      const first = storeRef.current?.displayName ? storeRef.current.displayName.split(" ")[0] : "";
+      return wrapped(<div key="unlock">
+        <CredentialScreen mode={storeRef.current?.authMode || "pin"} title={first ? `Welcome back, ${first}` : "Welcome back"} subtitle="Log in with your PIN or password to open your dashboard."
+          onSubmit={handleUnlockSubmit} error={error} submitLabel="Log In" showForgot onForgot={handleForgotStart} showSocial />
+      </div>);
+    }
+    case "unlock-twofa":
+      return wrapped(<div key="unlock-twofa"><TwoFAVerifyScreen onVerify={handleUnlockTwoFA} error={error} /></div>);
+    case "forgot-code":
+      return wrapped(<div key="forgot-code">
+        <CredentialScreen mode="recovery" icon="key" title="Enter your recovery code" subtitle="The 12-character code you saved when you first set up Ledger."
+          onSubmit={handleForgotCodeSubmit} error={error} submitLabel="Continue" />
+      </div>);
+    case "forgot-choose-mode":
+      return wrapped(<div key="forgot-choose-mode"><ChooseModeScreen title="Choose a new unlock method" subtitle="Your data is safe — you're just resetting how you get in." onChoose={handleForgotChooseMode} /></div>);
+    case "forgot-create":
+      return wrapped(<div key="forgot-create">
+        <CredentialScreen mode={setupModeRef.current} title={setupModeRef.current === "pin" ? "Set a new PIN" : "Set a new password"}
+          subtitle="This replaces your old one." onSubmit={handleForgotCreateSubmit} error={error} submitLabel="Continue" showStrength />
+      </div>);
+    case "forgot-confirm":
+      return wrapped(<div key="forgot-confirm">
+        <CredentialScreen mode={setupModeRef.current} title="Confirm it" subtitle="Enter it once more to lock it in."
+          onSubmit={handleForgotConfirmSubmit} error={error} submitLabel="Continue" />
+      </div>);
+    case "recovery-reveal-reset":
+      return wrapped(<div key="recovery-reveal-reset"><RecoveryRevealScreen code={recoveryCodeRef.current} note={recoveryNoteRef.current} onContinue={handleRecoveryResetContinue} /></div>);
+    case "dashboard":
+      if (data) return <Dashboard data={data} saveData={saveData} onLock={handleLock} />;
+      return null;
+    default:
+      return null;
+  }
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
