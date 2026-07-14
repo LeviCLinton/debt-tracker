@@ -707,10 +707,8 @@ function PinPad({ onDigit, onBack }) {
 /* --- Welcome screen: first run only. Sets the tone + lets the person choose
    how they want to unlock the app going forward. --- */
 function SignUpScreen({ onContinue }) {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const canContinue = name.trim().length >= 2 && emailValid;
 
   return (
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
@@ -719,28 +717,22 @@ function SignUpScreen({ onContinue }) {
           <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow anim-pop">
             <Icon name="landmark" size={28} className="text-[var(--emerald)]" />
           </div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-center anim-in" style={{ animationDelay: "60ms" }}>Welcome to Ledger</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-center anim-in" style={{ animationDelay: "60ms" }}>Welcome to Ledger</h1>
           <p className="text-[var(--text-muted)] text-sm text-center mt-2.5 max-w-[300px] anim-in" style={{ animationDelay: "120ms" }}>
             Track what you owe and who owes you — encrypted and private, entirely on this device. Let's create your account.
           </p>
         </div>
         <div className="glass rounded-3xl p-5 sm:p-7 space-y-4">
           <div className="anim-in" style={{ animationDelay: "160ms" }}>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Full name</label>
-            <input autoFocus type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Amara Okafor"
-              onKeyDown={(e) => { if (e.key === "Enter" && canContinue) onContinue(name.trim(), email.trim()); }}
-              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 text-sm focus-ring focus:border-[var(--emerald)]" />
-          </div>
-          <div className="anim-in" style={{ animationDelay: "220ms" }}>
             <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Email address</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
-              onKeyDown={(e) => { if (e.key === "Enter" && canContinue) onContinue(name.trim(), email.trim()); }}
+            <input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+              onKeyDown={(e) => { if (e.key === "Enter" && emailValid) onContinue(email.trim()); }}
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 text-sm focus-ring focus:border-[var(--emerald)]" />
-            <p className="text-[11px] text-[var(--text-dim)] mt-1.5">Stored only on this device — used to greet you and label your account, never sent anywhere.</p>
+            <p className="text-[11px] text-[var(--text-dim)] mt-1.5">Stored only on this device — used to identify your account and confirm it's you if you ever reset your password.</p>
           </div>
-          <button onClick={() => canContinue && onContinue(name.trim(), email.trim())} disabled={!canContinue}
-            className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all anim-in" style={{ animationDelay: "280ms", background: canContinue ? "var(--emerald)" : "var(--surface)", color: canContinue ? "#06231a" : "var(--text-dim)" }}>
-            Create account
+          <button onClick={() => emailValid && onContinue(email.trim())} disabled={!emailValid}
+            className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all anim-in" style={{ animationDelay: "220ms", background: emailValid ? "var(--emerald)" : "var(--surface)", color: emailValid ? "#06231a" : "var(--text-dim)" }}>
+            Continue
           </button>
         </div>
       </div>
@@ -750,12 +742,13 @@ function SignUpScreen({ onContinue }) {
 
 /* --- Generic credential screen: reused for PIN entry, password entry,
    confirming, unlocking, and recovery-code entry. --- */
-function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, error, submitLabel, showForgot, onForgot, showSocial, showStrength }) {
+function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, error, submitLabel, showForgot, onForgot, showSocial, showStrength, onAltMode }) {
   const [value, setValue] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [shake, setShake] = useState(false);
   const [socialMsg, setSocialMsg] = useState("");
 
+  useEffect(() => { setValue(""); }, [mode]);
   useEffect(() => {
     if (error) { setShake(true); const t = setTimeout(() => setShake(false), 500); return () => clearTimeout(t); }
   }, [error]);
@@ -831,6 +824,11 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
               Forgot your PIN or password?
             </button>
           )}
+          {onAltMode && (
+            <button onClick={() => onAltMode(mode === "pin" ? "password" : "pin")} className="w-full text-center text-[12px] text-[var(--text-muted)] hover:text-[var(--emerald)] mt-4 focus-ring transition-colors">
+              {mode === "pin" ? "Prefer a password instead?" : "Prefer a quick PIN instead?"}
+            </button>
+          )}
         </div>
 
         {showSocial && (
@@ -864,7 +862,7 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
 
 /* --- Shown once right after setup (and again after any recovery reset):
    the one and only way back in if the PIN/password is forgotten. --- */
-function RecoveryRevealScreen({ code, note, onContinue }) {
+function RecoveryRevealScreen({ code, note, onContinue, continueLabel = "Continue" }) {
   const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -894,7 +892,7 @@ function RecoveryRevealScreen({ code, note, onContinue }) {
           <button onClick={onContinue} disabled={!confirmed}
             className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all"
             style={{ background: confirmed ? "var(--emerald)" : "var(--surface)", color: confirmed ? "#06231a" : "var(--text-dim)" }}>
-            Continue
+            {continueLabel}
           </button>
         </div>
       </div>
@@ -1000,27 +998,64 @@ function TwoFAVerifyScreen({ onVerify, error }) {
 
 /* Small intermediate step used inside the "forgot password" flow to pick a
    new unlock method before setting the new credential. */
-function ChooseModeScreen({ title, subtitle, onChoose }) {
+function ForgotEmailScreen({ onSubmit, error }) {
+  const [email, setEmail] = useState("");
+  const [shake, setShake] = useState(false);
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  useEffect(() => {
+    if (error) { setShake(true); const t = setTimeout(() => setShake(false), 500); return () => clearTimeout(t); }
+  }, [error]);
   return (
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow anim-pop">
-            <Icon name="shield-check" size={28} className="text-[var(--emerald)]" />
+          <div className="w-16 h-16 rounded-2xl bg-[var(--amber-dim)] border border-[#5c451a] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name="mail" size={26} className="text-[var(--amber)]" />
           </div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-center">{title}</h1>
-          {subtitle && <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">{subtitle}</p>}
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-center">Forgot your password?</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">Enter the email on your account and we'll help you reset it.</p>
+        </div>
+        <div className={`glass rounded-3xl p-5 sm:p-7 ${shake ? "anim-shake" : ""}`}>
+          <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Email address</label>
+          <input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+            onKeyDown={(e) => { if (e.key === "Enter" && valid) onSubmit(email.trim()); }}
+            className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 text-sm focus-ring focus:border-[var(--emerald)]" />
+          {error && <p className="text-[var(--danger)] text-xs mt-3 font-medium">{error}</p>}
+          <button onClick={() => valid && onSubmit(email.trim())} disabled={!valid}
+            className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all mt-5"
+            style={{ background: valid ? "var(--emerald)" : "var(--surface)", color: valid ? "#06231a" : "var(--text-dim)" }}>
+            Send reset link
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ForgotExplainScreen({ onHaveCode, onBackToLogin }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
+      <div className="w-full max-w-sm anim-rise">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#1c3a5c] flex items-center justify-center mb-5 float-slow anim-pop">
+            <Icon name="mail" size={26} className="text-[var(--azure)]" />
+          </div>
+          <h1 className="font-display text-2xl font-semibold text-center">We can't email you a link</h1>
+          <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[320px]">
+            Ledger runs entirely offline in your browser with no email server behind it, so there's no inbox for a reset link to arrive in. The honest, working equivalent is the recovery code you saved when you first set up your account.
+          </p>
         </div>
         <div className="glass rounded-3xl p-5 sm:p-6 space-y-3">
-          <button onClick={() => onChoose("pin")} className="social-btn w-full flex items-center gap-3.5 px-4 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] focus-ring text-left">
-            <div className="w-10 h-10 rounded-xl bg-[var(--emerald-dim)] flex items-center justify-center shrink-0"><Icon name="lock" size={18} className="text-[var(--emerald)]" /></div>
-            <div><div className="font-display font-semibold text-sm">Use a PIN</div><div className="text-[12px] text-[var(--text-dim)]">A quick 4–6 digit code</div></div>
+          <button onClick={onHaveCode} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring transition-transform active:scale-[0.98]" style={{ background: "var(--emerald)", color: "#06231a" }}>
+            I have my recovery code
           </button>
-          <button onClick={() => onChoose("password")} className="social-btn w-full flex items-center gap-3.5 px-4 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] focus-ring text-left">
-            <div className="w-10 h-10 rounded-xl bg-[var(--azure-dim)] flex items-center justify-center shrink-0"><Icon name="shield-check" size={18} className="text-[var(--azure)]" /></div>
-            <div><div className="font-display font-semibold text-sm">Use a password</div><div className="text-[12px] text-[var(--text-dim)]">Stronger protection — recommended</div></div>
+          <button onClick={onBackToLogin} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] text-[var(--text-muted)] border border-[var(--border-soft)] focus-ring hover:bg-[var(--surface-hover)] transition-colors">
+            Back to login
           </button>
         </div>
+        <p className="text-center text-[var(--text-dim)] text-xs mt-6 max-w-[320px] mx-auto leading-relaxed">
+          No recovery code? Unfortunately there's no way around that by design — it's the same reason no one else can get into your data either.
+        </p>
       </div>
     </div>
   );
@@ -2261,18 +2296,19 @@ function App() {
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
+  const [authMode, setAuthModeState] = useState("password"); // reactive so the "prefer a PIN/password" toggle re-renders
 
   const keyRef = useRef(null);           // the in-memory DEK (Data Encryption Key)
   const storeRef = useRef(null);         // { authMode, wrappedMain, wrappedRecovery, data, displayName }
-  const setupModeRef = useRef("pin");    // mode chosen after sign-up / during the forgot flow
   const firstCredRef = useRef("");       // holds the first entry while confirming
   const recoveryCodeRef = useRef("");    // freshly generated code, pending the reveal screen
   const recoveryNoteRef = useRef("");    // custom copy for the reveal screen (setup vs. upgrade vs. reset)
   const pendingDataRef = useRef(null);   // decrypted data waiting on a 2FA check
   const pendingTotpSecretRef = useRef(""); // secret awaiting confirmation during 2FA setup
-  const legacySaltRef = useRef("");      // only used during one-time legacy-format migration
-  const signupNameRef = useRef("");      // new-account details, captured before the credential is set
-  const signupEmailRef = useRef("");
+  const signupEmailRef = useRef("");     // new-account email, captured before the credential is set
+  const forgotEmailRef = useRef("");     // email entered on the "forgot password" screen (cosmetic — single local vault)
+  const forgotDekRef = useRef(null);
+  const forgotDataRef = useRef(null);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -2295,20 +2331,21 @@ function App() {
     setData((prev) => { const next = typeof updater === "function" ? updater(prev) : updater; persist(next); return next; });
   }, [persist]);
 
-  /* ---------- first-run setup: create account -> choose PIN/password -> confirm ---------- */
-  const handleSignUpContinue = (name, email) => {
-    signupNameRef.current = name;
-    signupEmailRef.current = email;
-    setError("");
-    setPhase("choose-mode-signup");
+  const displayNameFromEmail = (email) => {
+    const local = (email || "").split("@")[0] || "";
+    return local.replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
-  const handleChooseMode = (mode) => {
-    setupModeRef.current = mode;
+  /* ---------- first-run setup: email -> create password (or PIN) -> confirm ---------- */
+  const handleSignUpContinue = (email) => {
+    signupEmailRef.current = email;
     firstCredRef.current = "";
+    setAuthModeState("password");
     setError("");
     setPhase("create");
   };
+
+  const handleAltMode = (mode) => { setAuthModeState(mode); firstCredRef.current = ""; setError(""); };
 
   const handleCreateSubmit = (val) => {
     firstCredRef.current = val;
@@ -2318,7 +2355,7 @@ function App() {
 
   const handleConfirmSubmit = async (val) => {
     if (val !== firstCredRef.current) {
-      setError(setupModeRef.current === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
+      setError(authMode === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
       firstCredRef.current = "";
       setPhase("create");
       return;
@@ -2338,11 +2375,12 @@ function App() {
     const initial = {
       items: [], extraBudget: 200, strategy: "avalanche",
       security: { totpEnabled: false, totpSecret: null },
-      profile: { name: signupNameRef.current, email: signupEmailRef.current },
+      profile: { name: "", email: signupEmailRef.current },
     };
     const dataBlob = await encryptJSON(dek, initial);
 
-    storeRef.current = { authMode: setupModeRef.current, wrappedMain, wrappedRecovery, data: dataBlob, displayName: signupNameRef.current };
+    const displayName = displayNameFromEmail(signupEmailRef.current);
+    storeRef.current = { authMode, wrappedMain, wrappedRecovery, data: dataBlob, displayName };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
 
     keyRef.current = dek;
@@ -2376,7 +2414,7 @@ function App() {
     enterDashboard();
   };
 
-  /* ---------- returning-user unlock ---------- */
+  /* ---------- returning-user login ---------- */
   const handleUnlockSubmit = async (cred) => {
     const store = storeRef.current;
     if (store && store.wrappedMain) {
@@ -2428,11 +2466,17 @@ function App() {
     enterDashboard();
   };
 
-  /* ---------- forgot PIN / password (local recovery code) ---------- */
-  const forgotDekRef = useRef(null);
-  const forgotDataRef = useRef(null);
+  /* ---------- forgot password/PIN: email -> honest explanation -> recovery code -> new credential -> back to login ---------- */
+  const handleForgotStart = () => { setError(""); setPhase("forgot-email"); };
 
-  const handleForgotStart = () => { setError(""); setPhase("forgot-code"); };
+  const handleForgotEmailSubmit = (email) => {
+    forgotEmailRef.current = email;
+    setError("");
+    setPhase("forgot-explain");
+  };
+
+  const handleForgotHaveCode = () => { setError(""); setPhase("forgot-code"); };
+  const handleForgotBackToLogin = () => { setError(""); setPhase("unlock"); };
 
   const handleForgotCodeSubmit = async (code) => {
     try {
@@ -2442,20 +2486,20 @@ function App() {
       const decrypted = migrateData(await decryptJSON(dek, store.data.iv, store.data.cipher));
       forgotDekRef.current = dek;
       forgotDataRef.current = decrypted;
+      firstCredRef.current = "";
+      setAuthModeState("password");
       setError("");
-      setPhase("forgot-choose-mode");
+      setPhase("forgot-create");
     } catch (e) {
       setError("That recovery code doesn't match — double-check and try again.");
     }
   };
 
-  const handleForgotChooseMode = (mode) => { setupModeRef.current = mode; firstCredRef.current = ""; setError(""); setPhase("forgot-create"); };
-
   const handleForgotCreateSubmit = (val) => { firstCredRef.current = val; setError(""); setPhase("forgot-confirm"); };
 
   const handleForgotConfirmSubmit = async (val) => {
     if (val !== firstCredRef.current) {
-      setError(setupModeRef.current === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
+      setError(authMode === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
       firstCredRef.current = "";
       setPhase("forgot-create");
       return;
@@ -2472,11 +2516,10 @@ function App() {
     const wrappedRecovery = await wrapDEK(key2, dek);
     wrappedRecovery.salt = salt2;
 
-    storeRef.current = { ...storeRef.current, authMode: setupModeRef.current, wrappedMain, wrappedRecovery };
+    storeRef.current = { ...storeRef.current, authMode, wrappedMain, wrappedRecovery };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
 
-    keyRef.current = dek;
-    pendingDataRef.current = forgotDataRef.current;
+    // Data itself never changed (same DEK), so nothing else needs re-encrypting.
     recoveryCodeRef.current = newRecoveryCode;
     recoveryNoteRef.current = "Your PIN or password was reset. Here's your new recovery code — save it, since the old one no longer works.";
     setError("");
@@ -2484,8 +2527,13 @@ function App() {
   };
 
   const handleRecoveryResetContinue = () => {
-    if (pendingDataRef.current?.security?.totpEnabled) setPhase("unlock-twofa");
-    else enterDashboard();
+    // Per spec: after a reset, send the person back to the login page to log in fresh with their new credential.
+    keyRef.current = null;
+    forgotDekRef.current = null;
+    forgotDataRef.current = null;
+    pendingDataRef.current = null;
+    setError("");
+    setPhase("unlock");
   };
 
   const handleLock = () => { keyRef.current = null; setData(null); setError(""); setPhase("unlock"); };
@@ -2499,19 +2547,15 @@ function App() {
   switch (phase) {
     case "signup":
       return wrapped(<div key="signup"><SignUpScreen onContinue={handleSignUpContinue} /></div>);
-    case "choose-mode-signup":
-      return wrapped(<div key="choose-mode-signup">
-        <ChooseModeScreen title="How would you like to sign in?" subtitle={`Nice to meet you, ${(signupNameRef.current || "there").split(" ")[0]} — choose how you'll unlock Ledger from now on.`} onChoose={handleChooseMode} />
-      </div>);
     case "create":
       return wrapped(<div key="create">
-        <CredentialScreen mode={setupModeRef.current} title={setupModeRef.current === "pin" ? "Create your PIN" : "Create your password"}
-          subtitle={setupModeRef.current === "pin" ? "Choose a 4–6 digit PIN to encrypt your data on this device." : "Choose a strong password to encrypt your data on this device."}
-          onSubmit={handleCreateSubmit} error={error} submitLabel="Continue" showStrength />
+        <CredentialScreen mode={authMode} title={authMode === "pin" ? "Create your PIN" : "Create your password"}
+          subtitle={authMode === "pin" ? "Choose a 4–6 digit PIN to encrypt your data on this device." : "Choose a strong password to encrypt your data on this device — the stronger, the better."}
+          onSubmit={handleCreateSubmit} error={error} submitLabel="Continue" showStrength onAltMode={handleAltMode} />
       </div>);
     case "confirm":
       return wrapped(<div key="confirm">
-        <CredentialScreen mode={setupModeRef.current} title={setupModeRef.current === "pin" ? "Confirm your PIN" : "Confirm your password"}
+        <CredentialScreen mode={authMode} title={authMode === "pin" ? "Confirm your PIN" : "Confirm your password"}
           subtitle="Enter it once more to lock it in." onSubmit={handleConfirmSubmit} error={error} submitLabel="Continue" />
       </div>);
     case "recovery-reveal":
@@ -2525,31 +2569,33 @@ function App() {
     case "unlock": {
       const first = storeRef.current?.displayName ? storeRef.current.displayName.split(" ")[0] : "";
       return wrapped(<div key="unlock">
-        <CredentialScreen mode={storeRef.current?.authMode || "pin"} title={first ? `Welcome back, ${first}` : "Welcome back"} subtitle="Log in with your PIN or password to open your dashboard."
+        <CredentialScreen mode={storeRef.current?.authMode || "password"} title={first ? `Welcome back, ${first}` : "Welcome back"} subtitle="Log in with your PIN or password to open your dashboard."
           onSubmit={handleUnlockSubmit} error={error} submitLabel="Log In" showForgot onForgot={handleForgotStart} showSocial />
       </div>);
     }
     case "unlock-twofa":
       return wrapped(<div key="unlock-twofa"><TwoFAVerifyScreen onVerify={handleUnlockTwoFA} error={error} /></div>);
+    case "forgot-email":
+      return wrapped(<div key="forgot-email"><ForgotEmailScreen onSubmit={handleForgotEmailSubmit} error={error} /></div>);
+    case "forgot-explain":
+      return wrapped(<div key="forgot-explain"><ForgotExplainScreen onHaveCode={handleForgotHaveCode} onBackToLogin={handleForgotBackToLogin} /></div>);
     case "forgot-code":
       return wrapped(<div key="forgot-code">
         <CredentialScreen mode="recovery" icon="key" title="Enter your recovery code" subtitle="The 12-character code you saved when you first set up Ledger."
           onSubmit={handleForgotCodeSubmit} error={error} submitLabel="Continue" />
       </div>);
-    case "forgot-choose-mode":
-      return wrapped(<div key="forgot-choose-mode"><ChooseModeScreen title="Choose a new unlock method" subtitle="Your data is safe — you're just resetting how you get in." onChoose={handleForgotChooseMode} /></div>);
     case "forgot-create":
       return wrapped(<div key="forgot-create">
-        <CredentialScreen mode={setupModeRef.current} title={setupModeRef.current === "pin" ? "Set a new PIN" : "Set a new password"}
-          subtitle="This replaces your old one." onSubmit={handleForgotCreateSubmit} error={error} submitLabel="Continue" showStrength />
+        <CredentialScreen mode={authMode} title={authMode === "pin" ? "Create a new PIN" : "Create a new password"}
+          subtitle="This replaces your old one — make it a strong one." onSubmit={handleForgotCreateSubmit} error={error} submitLabel="Continue" showStrength onAltMode={handleAltMode} />
       </div>);
     case "forgot-confirm":
       return wrapped(<div key="forgot-confirm">
-        <CredentialScreen mode={setupModeRef.current} title="Confirm it" subtitle="Enter it once more to lock it in."
+        <CredentialScreen mode={authMode} title="Confirm it" subtitle="Enter it once more to lock it in."
           onSubmit={handleForgotConfirmSubmit} error={error} submitLabel="Continue" />
       </div>);
     case "recovery-reveal-reset":
-      return wrapped(<div key="recovery-reveal-reset"><RecoveryRevealScreen code={recoveryCodeRef.current} note={recoveryNoteRef.current} onContinue={handleRecoveryResetContinue} /></div>);
+      return wrapped(<div key="recovery-reveal-reset"><RecoveryRevealScreen code={recoveryCodeRef.current} note={recoveryNoteRef.current} onContinue={handleRecoveryResetContinue} continueLabel="Continue to Log In" /></div>);
     case "dashboard":
       if (data) return <Dashboard data={data} saveData={saveData} onLock={handleLock} />;
       return null;
