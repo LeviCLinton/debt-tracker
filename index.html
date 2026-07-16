@@ -544,13 +544,49 @@ function wipeAllLocalData() {
 /* ============================= UTILS ============================= */
 const uid = (p = "id") => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+const CURRENCIES = [
+  { code: "USD", label: "US Dollar", symbol: "$" },
+  { code: "KES", label: "Kenyan Shilling", symbol: "KSh" },
+  { code: "EUR", label: "Euro", symbol: "€" },
+  { code: "GBP", label: "British Pound", symbol: "£" },
+  { code: "NGN", label: "Nigerian Naira", symbol: "₦" },
+  { code: "ZAR", label: "South African Rand", symbol: "R" },
+  { code: "GHS", label: "Ghanaian Cedi", symbol: "GH₵" },
+  { code: "TZS", label: "Tanzanian Shilling", symbol: "TSh" },
+  { code: "UGX", label: "Ugandan Shilling", symbol: "USh" },
+  { code: "INR", label: "Indian Rupee", symbol: "₹" },
+  { code: "JPY", label: "Japanese Yen", symbol: "¥" },
+  { code: "CNY", label: "Chinese Yuan", symbol: "¥" },
+  { code: "CAD", label: "Canadian Dollar", symbol: "$" },
+  { code: "AUD", label: "Australian Dollar", symbol: "$" },
+  { code: "AED", label: "UAE Dirham", symbol: "د.إ" },
+];
+// Module-level "current currency" so fmtMoney/fmtMoney2 don't need threading through
+// every call site as a prop. Dashboard syncs this to data.settings.currency on every
+// render (synchronously, before children render), so it's always up to date for the
+// active user's data — see the top of the Dashboard component.
+let CURRENT_CURRENCY = "USD";
+function setCurrentCurrency(code) { CURRENT_CURRENCY = code || "USD"; }
+function currentCurrencySymbol() {
+  const found = CURRENCIES.find((c) => c.code === CURRENT_CURRENCY);
+  return found ? found.symbol : CURRENT_CURRENCY;
+}
+
 const fmtMoney = (n) => {
   const v = Number(n) || 0;
-  return v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  try {
+    return v.toLocaleString("en-US", { style: "currency", currency: CURRENT_CURRENCY, maximumFractionDigits: 0 });
+  } catch (e) {
+    return `${CURRENT_CURRENCY} ${Math.round(v).toLocaleString("en-US")}`;
+  }
 };
 const fmtMoney2 = (n) => {
   const v = Number(n) || 0;
-  return v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  try {
+    return v.toLocaleString("en-US", { style: "currency", currency: CURRENT_CURRENCY, maximumFractionDigits: 2 });
+  } catch (e) {
+    return `${CURRENT_CURRENCY} ${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  }
 };
 const monthsFromNowLabel = (months) => {
   const d = new Date();
@@ -630,7 +666,7 @@ function toCSV(rows, headers) {
 
 /* ============================= DATA MIGRATION ============================= */
 function migrateData(raw) {
-  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, ...raw };
+  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, ...raw };
   if (raw && raw.debts) {
     const items = raw.debts.map((d) => ({
       id: d.id, type: "debt", name: d.name, contact: "", contactImage: null,
@@ -638,9 +674,9 @@ function migrateData(raw) {
       minPayment: d.minPayment || 0, dueDate: "", reminderDays: 3, notes: "",
       status: "active", createdAt: new Date().toISOString(), settledAt: null, history: [],
     }));
-    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" } };
+    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
   }
-  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" } };
+  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
 }
 
 /* ============================= PAYOFF SIMULATION (debts only) ============================= */
@@ -1315,7 +1351,7 @@ function TransactionModal({ item, onClose, onApply }) {
           <div>
             <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Amount</label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">{currentCurrencySymbol()}</span>
               <input autoFocus type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
                 className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
             </div>
@@ -1455,7 +1491,7 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
             <div>
               <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Current balance" : "Amount owed to you"}</label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">{currentCurrencySymbol()}</span>
                 <input type="number" min="0" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="4,500"
                   className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
               </div>
@@ -1473,7 +1509,7 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
             <div>
               <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Min. monthly payment" : "Expected monthly amount"}</label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">{currentCurrencySymbol()}</span>
                 <input type="number" min="0" value={minPayment} onChange={(e) => setMinPayment(e.target.value)} placeholder="0"
                   className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
               </div>
@@ -1598,7 +1634,7 @@ function BudgetControl({ extraBudget, setExtraBudget, minSum }) {
       <div className="flex items-center gap-3">
         <Tooltip label="Any extra cash added here will be completely funneled into your top priority debt." position="top" className="flex-1">
           <div className="relative flex-1 w-full">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">$</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">{currentCurrencySymbol()}</span>
             <input type="number" min="0" value={extraBudget} onChange={(e) => setExtraBudget(Math.max(0, Number(e.target.value)))}
               className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-7 pr-3 py-2.5 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
           </div>
@@ -1973,6 +2009,12 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
   const [savedPulse, setSavedPulse] = useState(false);
   const [showChangeModal, setShowChangeModal] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const currency = data.settings?.currency || "USD";
+
+  const changeCurrency = (code) => {
+    setCurrentCurrency(code); // update immediately so this same render pass reflects it
+    saveData((prev) => ({ ...prev, settings: { ...prev.settings, currency: code } }));
+  };
 
   const saveProfile = () => {
     saveData((prev) => ({ ...prev, profile: { ...prev.profile, name: name.trim() } }));
@@ -2016,6 +2058,27 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
           {savedPulse && <span className="text-[12px] text-[var(--emerald)] flex items-center gap-1.5 anim-in"><Icon name="check-circle" size={14} /> Saved</span>}
         </div>
         <p className="text-[11px] text-[var(--text-dim)] mt-3">Just a local label for you — stored encrypted, never sent anywhere.</p>
+      </div>
+
+      {/* Currency */}
+      <div className="glass rounded-3xl p-5 sm:p-7">
+        <div className="flex items-center gap-2 mb-5">
+          <Icon name="banknote" size={17} className="text-[var(--amber)]" />
+          <h3 className="font-display font-semibold text-lg">Currency</h3>
+        </div>
+        <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Display all amounts in</label>
+        <div className="relative">
+          <select value={currency} onChange={(e) => changeCurrency(e.target.value)}
+            className="styled-select w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-4 pr-9 py-3 text-sm focus-ring focus:border-[var(--emerald)] cursor-pointer appearance-none">
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.symbol} — {c.label} ({c.code})</option>
+            ))}
+          </select>
+          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] pointer-events-none"><Icon name="chevron-down" size={14} /></span>
+        </div>
+        <p className="text-[11px] text-[var(--text-dim)] mt-3">
+          This only changes how numbers are <em>displayed</em> — balances aren't converted, so switching currencies doesn't change what you actually owe or are owed.
+        </p>
       </div>
 
       {/* Security */}
@@ -2290,6 +2353,9 @@ function DataPanel({ items, onClose, onImport }) {
 /* ============================= DASHBOARD ============================= */
 function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset }) {
   const { items, extraBudget, strategy } = data;
+  // Keep the shared money formatter in sync with this account's chosen currency.
+  // Synchronous and before any children render, so every fmtMoney() call below reflects it immediately.
+  setCurrentCurrency(data.settings?.currency);
   const [tab, setTab] = useState("overview"); // overview | owe | owed | contacts | history | stats
   const [modalItem, setModalItem] = useState(null); // null closed, {} new, {...} edit
   const [modalDefaultType, setModalDefaultType] = useState("debt");
@@ -2577,6 +2643,7 @@ function App() {
       items: [], extraBudget: 200, strategy: "avalanche",
       security: { totpEnabled: false, totpSecret: null },
       profile: { name: "" },
+      settings: { currency: "USD" },
     };
     const dataBlob = await encryptJSON(dek, initial);
 
