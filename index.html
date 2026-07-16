@@ -313,6 +313,7 @@ const ICON_PATHS = {
   pencil: <><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>,
   settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></>,
   paperclip: <><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></>,
+  "refresh-cw": <><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></>,
   mail: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></>,
   eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
   "eye-off": <><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6 0 10 7 10 7a17 17 0 0 1-3.1 3.87M6.6 6.6A17.3 17.3 0 0 0 2 11s4 7 10 7a9.3 9.3 0 0 0 4.4-1.1M9.9 14.1a3 3 0 1 0 4.2-4.2"/><path d="M2 2l20 20"/></>,
@@ -465,18 +466,6 @@ async function verifyTotp(secretBase32, code, windowSteps = 1) {
 }
 
 /* --- Password strength: a lightweight local heuristic (no external library). --- */
-function passwordStrength(pw) {
-  if (!pw) return { score: 0, label: "Too short" };
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  const labels = ["Very weak", "Weak", "Fair", "Good", "Strong", "Very strong"];
-  return { score, label: labels[score] };
-}
-
 const STORAGE_KEY = "ledger_debtdash_v2"; // legacy localStorage key, kept only for one-time migration
 const IDB_NAME = "ledger_debtdash_db";
 const IDB_VERSION = 1;
@@ -532,6 +521,25 @@ async function loadAuthStore() {
   } catch (e) { return null; }
 }
 async function saveAuthStore(value) { return idbSet(IDB_RECORD_KEY, value); }
+function idbDeleteDatabase() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(IDB_NAME);
+    req.onsuccess = () => resolve(true);
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => resolve(true); // still proceed with reload; the DB will finish closing on its own
+  });
+}
+function wipeAllLocalData() {
+  return new Promise((resolve) => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+    try {
+      const req = indexedDB.deleteDatabase(IDB_NAME);
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+      req.onblocked = () => resolve();
+    } catch (e) { resolve(); }
+  });
+}
 
 /* ============================= UTILS ============================= */
 const uid = (p = "id") => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -750,9 +758,8 @@ function PinPad({ onDigit, onBack }) {
    how they want to unlock the app going forward. --- */
 /* --- Generic credential screen: reused for PIN entry, password entry,
    confirming, unlocking, and recovery-code entry. --- */
-function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, error, submitLabel, showForgot, onForgot, showStrength, onAltMode, showDisclaimer }) {
+function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, error, submitLabel, showForgot, onForgot, showDisclaimer }) {
   const [value, setValue] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [shake, setShake] = useState(false);
 
   useEffect(() => { setValue(""); }, [mode]);
@@ -762,11 +769,8 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
 
   const handleDigit = (d) => { if (value.length < 6) setValue(value + d); };
   const handleBack = () => setValue((v) => v.slice(0, -1));
-  const canSubmit = mode === "pin" ? value.length >= 4 : mode === "recovery" ? value.replace(/[^A-Z0-9]/gi, "").length >= 8 : value.length >= 4;
+  const canSubmit = mode === "pin" ? value.length >= 4 : value.replace(/[^A-Z0-9]/gi, "").length >= 8;
   const submit = () => { if (canSubmit) onSubmit(mode === "recovery" ? normalizeRecoveryInput(value) : value); };
-
-  const strength = passwordStrength(value);
-  const strengthColors = ["#fb7185", "#fb7185", "#fbbf24", "#fbbf24", "#34d399", "#34d399"];
 
   return (
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
@@ -795,27 +799,14 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
               <div className="relative mb-3">
                 <input
                   autoFocus
-                  type={mode === "password" && !showPw ? "password" : "text"}
+                  type="text"
                   value={value}
-                  onChange={(e) => setValue(mode === "recovery" ? e.target.value.toUpperCase() : e.target.value)}
+                  onChange={(e) => setValue(e.target.value.toUpperCase())}
                   onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-                  placeholder={mode === "recovery" ? "XXXX-XXXX-XXXX" : "Enter your password"}
-                  className={`w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 ${mode === "recovery" ? "font-mono tracking-widest text-center" : ""} text-sm focus-ring focus:border-[var(--emerald)] pr-11`}
+                  placeholder="XXXX-XXXX-XXXX"
+                  className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3.5 font-mono tracking-widest text-center text-sm focus-ring focus:border-[var(--emerald)]"
                 />
-                {mode === "password" && (
-                  <button type="button" onClick={() => setShowPw((s) => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] hover:text-[var(--text-primary)]" aria-label="Toggle password visibility">
-                    <Icon name={showPw ? "eye-off" : "eye"} size={16} />
-                  </button>
-                )}
               </div>
-              {showStrength && mode === "password" && value && (
-                <div className="mb-3 anim-in">
-                  <div className="strength-bar mb-1.5">
-                    <div className="strength-fill" style={{ width: `${(strength.score / 5) * 100}%`, background: strengthColors[strength.score] }}></div>
-                  </div>
-                  <p className="text-[11px] text-[var(--text-dim)]">{strength.label} — aim for 12+ characters mixing letters, numbers, and symbols.</p>
-                </div>
-              )}
               {error && <p className="text-[var(--danger)] text-xs text-center mb-3 font-medium">{error}</p>}
             </>
           )}
@@ -828,19 +819,14 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
 
           {showForgot && (
             <button onClick={onForgot} className="w-full text-center text-[12px] text-[var(--text-muted)] hover:text-[var(--emerald)] mt-4 focus-ring transition-colors">
-              Forgot your PIN or password?
-            </button>
-          )}
-          {onAltMode && (
-            <button onClick={() => onAltMode(mode === "pin" ? "password" : "pin")} className="w-full text-center text-[12px] text-[var(--text-muted)] hover:text-[var(--emerald)] mt-4 focus-ring transition-colors">
-              {mode === "pin" ? "Prefer a password instead?" : "Prefer a quick PIN instead?"}
+              Forgot your PIN?
             </button>
           )}
         </div>
 
         {showDisclaimer ? (
           <p className="text-center text-[var(--text-dim)] text-[11px] leading-relaxed mt-6 max-w-[300px] mx-auto">
-            Ledger is 100% private and runs entirely on your device. We never store your PIN, password, or data on a server — so please keep your PIN safe and save your recovery code, since without them your data can't be recovered.
+            Ledger is 100% private and runs entirely on your device. We never store your PIN or your data on a server — so please keep your PIN safe and save your backup code, since without them your data can't be recovered.
           </p>
         ) : (
           <p className="text-center text-[var(--text-dim)] text-xs mt-6">Encrypted locally with AES-GCM. Nothing leaves this device.</p>
@@ -851,13 +837,22 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
 }
 
 /* --- Shown once right after setup (and again after any recovery reset):
-   the one and only way back in if the PIN/password is forgotten. --- */
+   the one and only way back in if the PIN is forgotten. --- */
 function RecoveryRevealScreen({ code, note, onContinue, continueLabel = "Continue" }) {
   const [confirmed, setConfirmed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+  const saved = copied || downloaded;
+
   const copy = async () => {
     try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch (e) { /* ignore */ }
   };
+  const download = () => {
+    const content = `Ledger recovery code\n\n${code}\n\nKeep this somewhere safe and private. Anyone with this code can reset the PIN on this device's Ledger data.\nSaved: ${new Date().toLocaleString()}`;
+    downloadFile(`ledger-recovery-code-${todayISO()}.txt`, content, "text/plain");
+    setDownloaded(true);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
@@ -867,22 +862,74 @@ function RecoveryRevealScreen({ code, note, onContinue, continueLabel = "Continu
           </div>
           <h1 className="font-display text-2xl font-semibold text-center">Save your recovery code</h1>
           <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[300px]">
-            {note || "Since Ledger has no server and can't email you a reset link, this code is the only way back in if you forget your PIN or password."}
+            {note || "Since Ledger has no server and can't email you a reset link, this code is the only way back in if you forget your PIN."}
           </p>
         </div>
         <div className="glass rounded-3xl p-5 sm:p-7 text-center">
           <div className="recovery-code-capsule text-xl font-semibold px-4 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] mb-4 select-all anim-pop">{code}</div>
-          <button onClick={copy} className="social-btn inline-flex items-center gap-2 text-[13px] text-[var(--emerald)] mb-6 focus-ring">
-            <Icon name={copied ? "check-circle" : "receipt"} size={14} /> {copied ? "Copied!" : "Copy to clipboard"}
-          </button>
-          <label className="flex items-start gap-2.5 text-left mb-5 cursor-pointer">
-            <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[var(--emerald)]" />
+          <div className="grid grid-cols-2 gap-2.5 mb-6">
+            <button onClick={copy} className="social-btn inline-flex items-center justify-center gap-2 h-11 rounded-xl border border-[var(--border-soft)] text-[13px] font-medium focus-ring" style={{ color: copied ? "var(--emerald)" : "var(--text-primary)" }}>
+              <Icon name={copied ? "check-circle" : "receipt"} size={14} /> {copied ? "Copied!" : "Copy code"}
+            </button>
+            <button onClick={download} className="social-btn inline-flex items-center justify-center gap-2 h-11 rounded-xl border border-[var(--border-soft)] text-[13px] font-medium focus-ring" style={{ color: downloaded ? "var(--emerald)" : "var(--text-primary)" }}>
+              <Icon name={downloaded ? "check-circle" : "download"} size={14} /> {downloaded ? "Downloaded!" : "Download"}
+            </button>
+          </div>
+          <label className={`flex items-start gap-2.5 text-left mb-5 ${saved ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
+            <input type="checkbox" checked={confirmed} disabled={!saved} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[var(--emerald)]" />
             <span className="text-[13px] text-[var(--text-muted)]">I've saved this somewhere safe — I understand Ledger can't recover it for me.</span>
           </label>
+          {!saved && <p className="text-[11px] text-[var(--amber)] -mt-3 mb-5">Copy or download your code first to unlock this checkbox.</p>}
           <button onClick={onContinue} disabled={!confirmed}
             className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all"
             style={{ background: confirmed ? "var(--emerald)" : "var(--surface)", color: confirmed ? "#06231a" : "var(--text-dim)" }}>
             {continueLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --- Last resort: for when both the PIN and the backup code are gone.
+   There is no way to decrypt existing data without one of those, so this
+   permanently deletes the local database and starts over from scratch. --- */
+function FactoryResetModal({ onClose, onConfirm }) {
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const canReset = confirmText.trim().toUpperCase() === "RESET";
+
+  const handleConfirm = async () => {
+    if (!canReset || busy) return;
+    setBusy(true);
+    await onConfirm();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.8)" }} onClick={() => !busy && onClose()}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7" style={{ borderColor: "rgba(251,113,133,0.35)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: "var(--danger-dim)", border: "1px solid rgba(251,113,133,0.4)" }}>
+          <Icon name="triangle-alert" size={24} className="text-[var(--danger)]" />
+        </div>
+        <h2 className="font-display text-xl font-semibold mb-2">Factory reset Ledger?</h2>
+        <p className="text-[13px] text-[var(--text-muted)] leading-relaxed mb-5">
+          This permanently deletes your PIN, backup code, and every debt, receivable, and receipt stored on this device. There is no server copy to fall back on — <span className="text-[var(--danger)] font-medium">this cannot be undone.</span>
+        </p>
+        <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">
+          Type <span className="font-mono text-[var(--danger)]">RESET</span> to confirm
+        </label>
+        <input autoFocus type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
+          className="w-full bg-[var(--surface)] border rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus-ring mb-5"
+          style={{ borderColor: "rgba(251,113,133,0.3)" }} placeholder="RESET" />
+        <div className="flex gap-3">
+          <button onClick={onClose} disabled={busy} className="flex-1 h-12 rounded-2xl border border-[var(--border-soft)] text-sm font-medium text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring disabled:opacity-50">
+            Cancel
+          </button>
+          <button onClick={handleConfirm} disabled={!canReset || busy}
+            className="flex-1 h-12 rounded-2xl font-display font-semibold text-[15px] text-white disabled:opacity-30 disabled:cursor-not-allowed focus-ring transition-all"
+            style={{ background: "linear-gradient(135deg, #fb7185, #dc2626)" }}>
+            {busy ? "Wiping…" : "Wipe Data & Reset"}
           </button>
         </div>
       </div>
@@ -988,7 +1035,7 @@ function TwoFAVerifyScreen({ onVerify, error }) {
 
 /* Small intermediate step used inside the "forgot password" flow to pick a
    new unlock method before setting the new credential. */
-function ForgotExplainScreen({ onHaveCode, onBackToLogin }) {
+function ForgotExplainScreen({ onHaveCode, onBackToLogin, onFactoryReset }) {
   return (
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
@@ -996,7 +1043,7 @@ function ForgotExplainScreen({ onHaveCode, onBackToLogin }) {
           <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#1c3a5c] flex items-center justify-center mb-5 float-slow anim-pop">
             <Icon name="key" size={26} className="text-[var(--azure)]" />
           </div>
-          <h1 className="font-display text-2xl font-semibold text-center">Reset your PIN or password</h1>
+          <h1 className="font-display text-2xl font-semibold text-center">Reset your PIN</h1>
           <p className="text-[var(--text-muted)] text-sm text-center mt-2 max-w-[320px]">
             Ledger runs entirely offline with no account server, so there's no email to send a reset link to. The real, working equivalent is the recovery code you saved when you first set up your account.
           </p>
@@ -1009,9 +1056,14 @@ function ForgotExplainScreen({ onHaveCode, onBackToLogin }) {
             Back to login
           </button>
         </div>
-        <p className="text-center text-[var(--text-dim)] text-xs mt-6 max-w-[320px] mx-auto leading-relaxed">
-          No recovery code? Unfortunately there's no way around that by design — it's the same reason no one else can get into your data either.
-        </p>
+        <div className="mt-6 pt-5 border-t border-[var(--border-soft)] text-center">
+          <p className="text-[12px] text-[var(--text-dim)] mb-2.5 max-w-[300px] mx-auto leading-relaxed">
+            Lost your recovery code too? There's genuinely no way to unlock this data by design — but you can wipe it and start fresh.
+          </p>
+          <button onClick={onFactoryReset} className="text-[12px] font-medium text-[var(--danger)] hover:underline focus-ring">
+            I don't have my code either — Factory reset
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1833,32 +1885,27 @@ function StatisticsView({ items, sim, extraBudget, strategy }) {
 }
 
 /* ============================= SETTINGS ============================= */
-function ChangeCredentialModal({ authMode, onClose, onSubmit }) {
+function ChangeCredentialModal({ onClose, onSubmit }) {
   const [step, setStep] = useState("current"); // current | new | confirm
   const [currentVal, setCurrentVal] = useState("");
-  const [newMode, setNewMode] = useState(authMode);
   const [newVal, setNewVal] = useState("");
   const [confirmVal, setConfirmVal] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const strength = passwordStrength(newVal);
-  const strengthColors = ["#fb7185", "#fb7185", "#fbbf24", "#fbbf24", "#34d399", "#34d399"];
-
-  const currentValid = authMode === "pin" ? currentVal.length >= 4 : currentVal.length >= 4;
-  const newValid = newMode === "pin" ? newVal.length >= 4 && newVal.length <= 6 : newVal.length >= 4;
+  const currentValid = currentVal.length >= 4;
+  const newValid = newVal.length >= 4 && newVal.length <= 6;
 
   const handleCurrentContinue = () => { if (currentValid) { setError(""); setStep("new"); } };
   const handleNewContinue = () => { if (newValid) { setError(""); setStep("confirm"); } };
 
   const handleFinalSubmit = async () => {
-    if (confirmVal !== newVal) { setError(newMode === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again."); return; }
+    if (confirmVal !== newVal) { setError("PINs don't match — try again."); return; }
     setBusy(true);
-    const result = await onSubmit(currentVal, newMode, newVal);
+    const result = await onSubmit(currentVal, newVal);
     setBusy(false);
     if (!result.ok) { setError(result.error); setStep("current"); setCurrentVal(""); return; }
-    onClose(true, newMode);
+    onClose(true);
   };
 
   return (
@@ -1866,19 +1913,19 @@ function ChangeCredentialModal({ authMode, onClose, onSubmit }) {
       <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-lg font-semibold">
-            {step === "current" ? "Confirm it's you" : step === "new" ? "Choose a new credential" : "Confirm your new credential"}
+            {step === "current" ? "Confirm it's you" : step === "new" ? "Choose a new PIN" : "Confirm your new PIN"}
           </h2>
           <button onClick={() => onClose(false)} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
         </div>
 
         {step === "current" && (
           <div className="space-y-4">
-            <p className="text-[13px] text-[var(--text-muted)]">Enter your current {authMode === "pin" ? "PIN" : "password"} to continue.</p>
-            <input autoFocus type={authMode === "pin" ? "text" : "password"} inputMode={authMode === "pin" ? "numeric" : "text"} value={currentVal}
-              onChange={(e) => setCurrentVal(authMode === "pin" ? e.target.value.replace(/\D/g, "").slice(0, 6) : e.target.value)}
+            <p className="text-[13px] text-[var(--text-muted)]">Enter your current PIN to continue.</p>
+            <input autoFocus type="text" inputMode="numeric" value={currentVal}
+              onChange={(e) => setCurrentVal(e.target.value.replace(/\D/g, "").slice(0, 6))}
               onKeyDown={(e) => { if (e.key === "Enter") handleCurrentContinue(); }}
-              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]"
-              placeholder={authMode === "pin" ? "Current PIN" : "Current password"} />
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus-ring focus:border-[var(--emerald)]"
+              placeholder="Current PIN" />
             {error && <p className="text-[var(--danger)] text-xs font-medium">{error}</p>}
             <button onClick={handleCurrentContinue} disabled={!currentValid}
               className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
@@ -1889,30 +1936,11 @@ function ChangeCredentialModal({ authMode, onClose, onSubmit }) {
 
         {step === "new" && (
           <div className="space-y-4">
-            <div className="glass rounded-2xl p-1 grid grid-cols-2">
-              <button onClick={() => { setNewMode("pin"); setNewVal(""); }} className="py-2.5 rounded-xl text-sm font-medium font-display transition-all"
-                style={{ background: newMode === "pin" ? "var(--emerald-dim)" : "transparent", color: newMode === "pin" ? "var(--emerald)" : "var(--text-muted)", border: newMode === "pin" ? "1px solid #1c4f3c" : "1px solid transparent" }}>PIN</button>
-              <button onClick={() => { setNewMode("password"); setNewVal(""); }} className="py-2.5 rounded-xl text-sm font-medium font-display transition-all"
-                style={{ background: newMode === "password" ? "var(--azure-dim)" : "transparent", color: newMode === "password" ? "var(--azure)" : "var(--text-muted)", border: newMode === "password" ? "1px solid #1c3a5c" : "1px solid transparent" }}>Password</button>
-            </div>
-            <div className="relative">
-              <input autoFocus type={newMode === "password" && !showPw ? "password" : "text"} inputMode={newMode === "pin" ? "numeric" : "text"} value={newVal}
-                onChange={(e) => setNewVal(newMode === "pin" ? e.target.value.replace(/\D/g, "").slice(0, 6) : e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleNewContinue(); }}
-                className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)] pr-11"
-                placeholder={newMode === "pin" ? "New 4–6 digit PIN" : "New password"} />
-              {newMode === "password" && (
-                <button type="button" onClick={() => setShowPw((s) => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] hover:text-[var(--text-primary)]">
-                  <Icon name={showPw ? "eye-off" : "eye"} size={16} />
-                </button>
-              )}
-            </div>
-            {newMode === "password" && newVal && (
-              <div>
-                <div className="strength-bar mb-1.5"><div className="strength-fill" style={{ width: `${(strength.score / 5) * 100}%`, background: strengthColors[strength.score] }}></div></div>
-                <p className="text-[11px] text-[var(--text-dim)]">{strength.label} — aim for 12+ characters mixing letters, numbers, and symbols.</p>
-              </div>
-            )}
+            <input autoFocus type="text" inputMode="numeric" value={newVal}
+              onChange={(e) => setNewVal(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onKeyDown={(e) => { if (e.key === "Enter") handleNewContinue(); }}
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus-ring focus:border-[var(--emerald)]"
+              placeholder="New 4–6 digit PIN" />
             <button onClick={handleNewContinue} disabled={!newValid}
               className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
               Continue
@@ -1923,15 +1951,15 @@ function ChangeCredentialModal({ authMode, onClose, onSubmit }) {
         {step === "confirm" && (
           <div className="space-y-4">
             <p className="text-[13px] text-[var(--text-muted)]">Enter it once more to lock it in.</p>
-            <input autoFocus type={newMode === "password" && !showPw ? "password" : "text"} inputMode={newMode === "pin" ? "numeric" : "text"} value={confirmVal}
-              onChange={(e) => setConfirmVal(newMode === "pin" ? e.target.value.replace(/\D/g, "").slice(0, 6) : e.target.value)}
+            <input autoFocus type="text" inputMode="numeric" value={confirmVal}
+              onChange={(e) => setConfirmVal(e.target.value.replace(/\D/g, "").slice(0, 6))}
               onKeyDown={(e) => { if (e.key === "Enter") handleFinalSubmit(); }}
-              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]"
-              placeholder={newMode === "pin" ? "Confirm PIN" : "Confirm password"} />
+              className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus-ring focus:border-[var(--emerald)]"
+              placeholder="Confirm PIN" />
             {error && <p className="text-[var(--danger)] text-xs font-medium">{error}</p>}
             <button onClick={handleFinalSubmit} disabled={busy || confirmVal.length < 4}
               className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
-              {busy ? "Saving…" : "Save new " + (newMode === "pin" ? "PIN" : "password")}
+              {busy ? "Saving…" : "Save new PIN"}
             </button>
           </div>
         )}
@@ -1940,11 +1968,10 @@ function ChangeCredentialModal({ authMode, onClose, onSubmit }) {
   );
 }
 
-function SettingsView({ data, saveData, authMode, onChangeCredential }) {
+function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
   const [name, setName] = useState(data.profile?.name || "");
   const [savedPulse, setSavedPulse] = useState(false);
   const [showChangeModal, setShowChangeModal] = useState(false);
-  const [currentMode, setCurrentMode] = useState(authMode);
   const [successMsg, setSuccessMsg] = useState("");
 
   const saveProfile = () => {
@@ -1953,11 +1980,10 @@ function SettingsView({ data, saveData, authMode, onChangeCredential }) {
     setTimeout(() => setSavedPulse(false), 1600);
   };
 
-  const handleModalClose = (changed, newMode) => {
+  const handleModalClose = (changed) => {
     setShowChangeModal(false);
     if (changed) {
-      setCurrentMode(newMode);
-      setSuccessMsg(`Your ${newMode === "pin" ? "PIN" : "password"} was updated.`);
+      setSuccessMsg("Your PIN was updated.");
       setTimeout(() => setSuccessMsg(""), 3000);
     }
   };
@@ -2001,10 +2027,10 @@ function SettingsView({ data, saveData, authMode, onChangeCredential }) {
 
         <div className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] mb-3">
           <div className="flex items-center gap-2.5">
-            <Icon name={currentMode === "pin" ? "lock" : "shield-check"} size={16} className="text-[var(--text-muted)]" />
+            <Icon name="lock" size={16} className="text-[var(--text-muted)]" />
             <div>
-              <div className="text-sm font-medium">{currentMode === "pin" ? "PIN" : "Password"}</div>
-              <div className="text-[11px] text-[var(--text-dim)]">Your current sign-in method</div>
+              <div className="text-sm font-medium">PIN</div>
+              <div className="text-[11px] text-[var(--text-dim)]">Your sign-in method</div>
             </div>
           </div>
           <button onClick={() => setShowChangeModal(true)} className="h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--surface-hover)", border: "1px solid var(--border-soft)" }}>
@@ -2039,11 +2065,25 @@ function SettingsView({ data, saveData, authMode, onChangeCredential }) {
           <span className="text-[12px] uppercase tracking-widest text-[var(--text-dim)] font-medium">Local-first, always</span>
         </div>
         <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
-          Ledger is 100% private and runs entirely on your device. We never store your PIN, password, or data on a server — so keep your PIN safe and hold onto your recovery code, since without them your data can't be recovered.
+          Ledger is 100% private and runs entirely on your device. We never store your PIN or your data on a server — so keep your PIN safe and hold onto your backup code, since without them your data can't be recovered.
         </p>
       </div>
 
-      {showChangeModal && <ChangeCredentialModal authMode={currentMode} onClose={handleModalClose} onSubmit={onChangeCredential} />}
+      {/* Danger zone */}
+      <div className="glass rounded-3xl p-5 sm:p-6" style={{ borderColor: "#4a1f2b" }}>
+        <div className="flex items-center gap-2 mb-2">
+          <Icon name="triangle-alert" size={15} className="text-[var(--danger)]" />
+          <span className="text-[12px] uppercase tracking-widest text-[var(--danger)] font-medium">Danger zone</span>
+        </div>
+        <p className="text-[12px] text-[var(--text-muted)] leading-relaxed mb-4">
+          Lost both your PIN and backup code? There's no way to decrypt your data without one of them — but you can wipe this device's Ledger data and start completely fresh.
+        </p>
+        <button onClick={onFactoryReset} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-display font-semibold text-[var(--danger)] focus-ring" style={{ background: "var(--danger-dim)", border: "1px solid #4a1f2b" }}>
+          <Icon name="refresh-cw" size={14} /> Factory reset
+        </button>
+      </div>
+
+      {showChangeModal && <ChangeCredentialModal onClose={handleModalClose} onSubmit={onChangeCredential} />}
     </div>
   );
 }
@@ -2248,7 +2288,7 @@ function DataPanel({ items, onClose, onImport }) {
 }
 
 /* ============================= DASHBOARD ============================= */
-function Dashboard({ data, saveData, onLock, authMode, onChangeCredential }) {
+function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset }) {
   const { items, extraBudget, strategy } = data;
   const [tab, setTab] = useState("overview"); // overview | owe | owed | contacts | history | stats
   const [modalItem, setModalItem] = useState(null); // null closed, {} new, {...} edit
@@ -2446,7 +2486,7 @@ function Dashboard({ data, saveData, onLock, authMode, onChangeCredential }) {
         {tab === "contacts" && <ContactsView items={items} onOpenItem={setModalItem} />}
         {tab === "history" && <HistoryView items={items} />}
         {tab === "stats" && <StatisticsView items={items} sim={sim} extraBudget={extraBudget} strategy={strategy} />}
-        {tab === "settings" && <SettingsView data={data} saveData={saveData} authMode={authMode} onChangeCredential={onChangeCredential} />}
+        {tab === "settings" && <SettingsView data={data} saveData={saveData} onChangeCredential={onChangeCredential} onFactoryReset={onFactoryReset} />}
       </main>
 
       {modalItem !== null && (
@@ -2470,10 +2510,10 @@ function App() {
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
-  const [authMode, setAuthModeState] = useState("password"); // reactive so the "prefer a PIN/password" toggle re-renders
+  const [showReset, setShowReset] = useState(false);
 
   const keyRef = useRef(null);           // the in-memory DEK (Data Encryption Key)
-  const storeRef = useRef(null);         // { authMode, wrappedMain, wrappedRecovery, data }
+  const storeRef = useRef(null);         // { authMode: "pin", wrappedMain, wrappedRecovery, data }
   const firstCredRef = useRef("");       // holds the first entry while confirming
   const recoveryCodeRef = useRef("");    // freshly generated code, pending the reveal screen
   const recoveryNoteRef = useRef("");    // custom copy for the reveal screen (setup vs. upgrade vs. reset)
@@ -2507,9 +2547,7 @@ function App() {
     setData((prev) => { const next = typeof updater === "function" ? updater(prev) : updater; persist(next); return next; });
   }, [persist]);
 
-  /* ---------- first-run setup: set a Master PIN/password directly, no email involved ---------- */
-  const handleAltMode = (mode) => { setAuthModeState(mode); firstCredRef.current = ""; setError(""); };
-
+  /* ---------- first-run setup: set a Master PIN directly ---------- */
   const handleCreateSubmit = (val) => {
     firstCredRef.current = val;
     setError("");
@@ -2518,7 +2556,7 @@ function App() {
 
   const handleConfirmSubmit = async (val) => {
     if (val !== firstCredRef.current) {
-      setError(authMode === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
+      setError("PINs don't match — try again.");
       firstCredRef.current = "";
       setPhase("create");
       return;
@@ -2542,7 +2580,7 @@ function App() {
     };
     const dataBlob = await encryptJSON(dek, initial);
 
-    storeRef.current = { authMode, wrappedMain, wrappedRecovery, data: dataBlob };
+    storeRef.current = { authMode: "pin", wrappedMain, wrappedRecovery, data: dataBlob };
     await saveAuthStore(storeRef.current);
 
     keyRef.current = dek;
@@ -2589,7 +2627,7 @@ function App() {
         if (decrypted.security?.totpEnabled) { pendingDataRef.current = decrypted; setPhase("unlock-twofa"); }
         else { setData(decrypted); setPhase("dashboard"); }
       } catch (e) {
-        setError(store.authMode === "pin" ? "Incorrect PIN — try again." : "Incorrect password — try again.");
+        setError("Incorrect PIN — try again.");
       }
       return;
     }
@@ -2613,7 +2651,7 @@ function App() {
       keyRef.current = dek;
       pendingDataRef.current = legacyData;
       recoveryCodeRef.current = recoveryCode;
-      recoveryNoteRef.current = "Your security was just upgraded to support recovery codes and two-factor authentication. Save this new recovery code — it's the only way back in if you forget your PIN.";
+      recoveryNoteRef.current = "Your security was just upgraded to support backup codes and two-factor authentication. Save this new backup code — it's the only way back in if you forget your PIN.";
       setError("");
       setPhase("recovery-reveal");
     } catch (e) {
@@ -2628,7 +2666,7 @@ function App() {
     enterDashboard();
   };
 
-  /* ---------- forgot PIN/password: honest local explanation -> recovery code -> new credential -> back to login ---------- */
+  /* ---------- forgot PIN: honest local explanation -> backup code -> new PIN -> back to login ---------- */
   const handleForgotStart = () => { setError(""); setPhase("forgot-explain"); };
   const handleForgotHaveCode = () => { setError(""); setPhase("forgot-code"); };
   const handleForgotBackToLogin = () => { setError(""); setPhase("unlock"); };
@@ -2642,11 +2680,10 @@ function App() {
       forgotDekRef.current = dek;
       forgotDataRef.current = decrypted;
       firstCredRef.current = "";
-      setAuthModeState("password");
       setError("");
       setPhase("forgot-create");
     } catch (e) {
-      setError("That recovery code doesn't match — double-check and try again.");
+      setError("That backup code doesn't match — double-check and try again.");
     }
   };
 
@@ -2654,7 +2691,7 @@ function App() {
 
   const handleForgotConfirmSubmit = async (val) => {
     if (val !== firstCredRef.current) {
-      setError(authMode === "pin" ? "PINs don't match — try again." : "Passwords don't match — try again.");
+      setError("PINs don't match — try again.");
       firstCredRef.current = "";
       setPhase("forgot-create");
       return;
@@ -2671,18 +2708,18 @@ function App() {
     const wrappedRecovery = await wrapDEK(key2, dek);
     wrappedRecovery.salt = salt2;
 
-    storeRef.current = { ...storeRef.current, authMode, wrappedMain, wrappedRecovery };
+    storeRef.current = { ...storeRef.current, authMode: "pin", wrappedMain, wrappedRecovery };
     await saveAuthStore(storeRef.current);
 
     // Data itself never changed (same DEK), so nothing else needs re-encrypting.
     recoveryCodeRef.current = newRecoveryCode;
-    recoveryNoteRef.current = "Your PIN or password was reset. Here's your new recovery code — save it, since the old one no longer works.";
+    recoveryNoteRef.current = "Your PIN was reset. Here's your new backup code — save it, since the old one no longer works.";
     setError("");
     setPhase("recovery-reveal-reset");
   };
 
   const handleRecoveryResetContinue = () => {
-    // Per spec: after a reset, send the person back to the login page to log in fresh with their new credential.
+    // After a reset, send the person back to the login page to log in fresh with their new PIN.
     keyRef.current = null;
     forgotDekRef.current = null;
     forgotDataRef.current = null;
@@ -2693,8 +2730,8 @@ function App() {
 
   const handleLock = () => { keyRef.current = null; setData(null); setError(""); setPhase("unlock"); };
 
-  /* ---------- settings: change PIN/password from inside the dashboard ---------- */
-  const handleChangeCredential = useCallback(async (currentCred, newMode, newVal) => {
+  /* ---------- settings: change PIN from inside the dashboard ---------- */
+  const handleChangeCredential = useCallback(async (currentCred, newVal) => {
     try {
       const store = storeRef.current;
       const key1 = await deriveKey(currentCred, store.wrappedMain.salt);
@@ -2705,31 +2742,42 @@ function App() {
       const wrappedMain = await wrapDEK(newKey, dek);
       wrappedMain.salt = newSalt;
 
-      storeRef.current = { ...store, authMode: newMode, wrappedMain };
+      storeRef.current = { ...store, authMode: "pin", wrappedMain };
       await saveAuthStore(storeRef.current);
       keyRef.current = dek;
       return { ok: true };
     } catch (e) {
-      return { ok: false, error: "Your current PIN or password doesn't match." };
+      return { ok: false, error: "Your current PIN doesn't match." };
     }
+  }, []);
+
+  /* ---------- factory reset: for when both the PIN and the backup code are lost ---------- */
+  const handleFactoryReset = useCallback(async () => {
+    try { await idbDeleteDatabase(); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+    window.location.reload();
   }, []);
 
   if (phase === "loading") {
     return <div className="min-h-screen flex items-center justify-center text-[var(--text-dim)] text-sm">Loading…</div>;
   }
 
-  const wrapped = (children) => <><AuthBackground />{children}</>;
+  const wrapped = (children) => <>
+    <AuthBackground />
+    {children}
+    {showReset && <FactoryResetModal onClose={() => setShowReset(false)} onConfirm={handleFactoryReset} />}
+  </>;
 
   switch (phase) {
     case "create":
       return wrapped(<div key="create">
-        <CredentialScreen mode={authMode} title={authMode === "pin" ? "Set your Master PIN" : "Set your Master Password"}
+        <CredentialScreen mode="pin" title="Set your Master PIN"
           subtitle="Welcome to Ledger. This generates the encryption key that secures your data right on this device — nothing is ever sent anywhere."
-          onSubmit={handleCreateSubmit} error={error} submitLabel="Continue" showStrength onAltMode={handleAltMode} showDisclaimer />
+          onSubmit={handleCreateSubmit} error={error} submitLabel="Continue" showDisclaimer />
       </div>);
     case "confirm":
       return wrapped(<div key="confirm">
-        <CredentialScreen mode={authMode} title={authMode === "pin" ? "Confirm your PIN" : "Confirm your password"}
+        <CredentialScreen mode="pin" title="Confirm your PIN"
           subtitle="Enter it once more to lock it in." onSubmit={handleConfirmSubmit} error={error} submitLabel="Continue" />
       </div>);
     case "recovery-reveal":
@@ -2742,32 +2790,45 @@ function App() {
     }
     case "unlock":
       return wrapped(<div key="unlock">
-        <CredentialScreen mode={storeRef.current?.authMode || "password"} title="Welcome back" subtitle="Enter your PIN or password to decrypt and unlock your local data."
+        <CredentialScreen mode="pin" title="Welcome back" subtitle="Enter your PIN to decrypt and unlock your local data."
           onSubmit={handleUnlockSubmit} error={error} submitLabel="Log In" showForgot onForgot={handleForgotStart} showDisclaimer />
+        <p className="text-center mt-2">
+          <button onClick={() => setShowReset(true)} className="text-[12px] text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors focus-ring">
+            Lost your PIN and backup code? Factory reset
+          </button>
+        </p>
       </div>);
     case "unlock-twofa":
       return wrapped(<div key="unlock-twofa"><TwoFAVerifyScreen onVerify={handleUnlockTwoFA} error={error} /></div>);
     case "forgot-explain":
-      return wrapped(<div key="forgot-explain"><ForgotExplainScreen onHaveCode={handleForgotHaveCode} onBackToLogin={handleForgotBackToLogin} /></div>);
+      return wrapped(<div key="forgot-explain"><ForgotExplainScreen onHaveCode={handleForgotHaveCode} onBackToLogin={handleForgotBackToLogin} onFactoryReset={() => setShowReset(true)} /></div>);
     case "forgot-code":
       return wrapped(<div key="forgot-code">
-        <CredentialScreen mode="recovery" icon="key" title="Enter your recovery code" subtitle="The 12-character code you saved when you first set up Ledger."
+        <CredentialScreen mode="recovery" icon="key" title="Enter your backup code" subtitle="The 12-character code you saved when you first set up Ledger."
           onSubmit={handleForgotCodeSubmit} error={error} submitLabel="Continue" />
+        <p className="text-center mt-2">
+          <button onClick={() => setShowReset(true)} className="text-[12px] text-[var(--text-dim)] hover:text-[var(--danger)] transition-colors focus-ring">
+            Lost this too? Factory reset instead
+          </button>
+        </p>
       </div>);
     case "forgot-create":
       return wrapped(<div key="forgot-create">
-        <CredentialScreen mode={authMode} title={authMode === "pin" ? "Create a new PIN" : "Create a new password"}
-          subtitle="This replaces your old one — make it a strong one." onSubmit={handleForgotCreateSubmit} error={error} submitLabel="Continue" showStrength onAltMode={handleAltMode} />
+        <CredentialScreen mode="pin" title="Create a new PIN"
+          subtitle="This replaces your old one." onSubmit={handleForgotCreateSubmit} error={error} submitLabel="Continue" />
       </div>);
     case "forgot-confirm":
       return wrapped(<div key="forgot-confirm">
-        <CredentialScreen mode={authMode} title="Confirm it" subtitle="Enter it once more to lock it in."
+        <CredentialScreen mode="pin" title="Confirm it" subtitle="Enter it once more to lock it in."
           onSubmit={handleForgotConfirmSubmit} error={error} submitLabel="Continue" />
       </div>);
     case "recovery-reveal-reset":
       return wrapped(<div key="recovery-reveal-reset"><RecoveryRevealScreen code={recoveryCodeRef.current} note={recoveryNoteRef.current} onContinue={handleRecoveryResetContinue} continueLabel="Continue to Log In" /></div>);
     case "dashboard":
-      if (data) return <Dashboard data={data} saveData={saveData} onLock={handleLock} authMode={storeRef.current?.authMode || "password"} onChangeCredential={handleChangeCredential} />;
+      if (data) return <>
+        <Dashboard data={data} saveData={saveData} onLock={handleLock} onChangeCredential={handleChangeCredential} onFactoryReset={() => setShowReset(true)} />
+        {showReset && <FactoryResetModal onClose={() => setShowReset(false)} onConfirm={handleFactoryReset} />}
+      </>;
       return null;
     default:
       return null;
