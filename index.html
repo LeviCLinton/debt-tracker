@@ -477,7 +477,61 @@ function passwordStrength(pw) {
   return { score, label: labels[score] };
 }
 
-const STORAGE_KEY = "ledger_debtdash_v2";
+const STORAGE_KEY = "ledger_debtdash_v2"; // legacy localStorage key, kept only for one-time migration
+const IDB_NAME = "ledger_debtdash_db";
+const IDB_VERSION = 1;
+const IDB_STORE = "kv";
+const IDB_RECORD_KEY = "authStore";
+
+/* --- IndexedDB storage layer. Bigger quota than localStorage (important now
+   that receipts and contact photos live inside the encrypted blob) and never
+   blocks the main thread. Objects are stored via structured clone, so no
+   JSON.stringify/parse round-trip is needed. A one-time migration pulls in
+   anything left over from the old localStorage-based version. --- */
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error("IndexedDB is not available in this browser.")); return; }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function loadAuthStore() {
+  const fromIdb = await idbGet(IDB_RECORD_KEY);
+  if (fromIdb) return fromIdb;
+  // one-time migration: bring over anything left in localStorage from before the IndexedDB switch
+  const legacyRaw = localStorage.getItem(STORAGE_KEY);
+  if (!legacyRaw) return null;
+  try {
+    const parsed = JSON.parse(legacyRaw);
+    await idbSet(IDB_RECORD_KEY, parsed);
+    localStorage.removeItem(STORAGE_KEY);
+    return parsed;
+  } catch (e) { return null; }
+}
+async function saveAuthStore(value) { return idbSet(IDB_RECORD_KEY, value); }
 
 /* ============================= UTILS ============================= */
 const uid = (p = "id") => `${p}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -2429,20 +2483,24 @@ function App() {
   const forgotDataRef = useRef(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) { setPhase("create"); return; }
-    try {
-      const parsed = JSON.parse(raw);
-      storeRef.current = parsed;
-      setPhase("unlock");
-    } catch (e) { setPhase("create"); }
+    (async () => {
+      try {
+        const parsed = await loadAuthStore();
+        if (!parsed) { setPhase("create"); return; }
+        storeRef.current = parsed;
+        setPhase("unlock");
+      } catch (e) {
+        setError("This browser doesn't support IndexedDB, which Ledger needs to store your data securely.");
+        setPhase("create");
+      }
+    })();
   }, []);
 
   const persist = useCallback(async (nextData) => {
     if (!keyRef.current || !storeRef.current) return;
     const dataBlob = await encryptJSON(keyRef.current, nextData);
     storeRef.current = { ...storeRef.current, data: dataBlob };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+    await saveAuthStore(storeRef.current);
   }, []);
 
   const saveData = useCallback((updater) => {
@@ -2485,7 +2543,7 @@ function App() {
     const dataBlob = await encryptJSON(dek, initial);
 
     storeRef.current = { authMode, wrappedMain, wrappedRecovery, data: dataBlob };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+    await saveAuthStore(storeRef.current);
 
     keyRef.current = dek;
     pendingDataRef.current = initial;
@@ -2551,7 +2609,7 @@ function App() {
       wrappedRecovery.salt = salt2;
       const dataBlob = await encryptJSON(dek, legacyData);
       storeRef.current = { authMode: "pin", wrappedMain, wrappedRecovery, data: dataBlob };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+      await saveAuthStore(storeRef.current);
       keyRef.current = dek;
       pendingDataRef.current = legacyData;
       recoveryCodeRef.current = recoveryCode;
@@ -2614,7 +2672,7 @@ function App() {
     wrappedRecovery.salt = salt2;
 
     storeRef.current = { ...storeRef.current, authMode, wrappedMain, wrappedRecovery };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+    await saveAuthStore(storeRef.current);
 
     // Data itself never changed (same DEK), so nothing else needs re-encrypting.
     recoveryCodeRef.current = newRecoveryCode;
@@ -2648,7 +2706,7 @@ function App() {
       wrappedMain.salt = newSalt;
 
       storeRef.current = { ...store, authMode: newMode, wrappedMain };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(storeRef.current));
+      await saveAuthStore(storeRef.current);
       keyRef.current = dek;
       return { ok: true };
     } catch (e) {
