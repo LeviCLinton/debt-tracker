@@ -29,6 +29,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- PayPal Hosted Buttons SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id=AUltVtNXLH884U-wKcBMV928xiRv53Yc--mgepQhSAjAXSZiVaoNlwn6EdSKH6n2EXPJ0mUi1lj4rVGP&components=hosted-buttons&disable-funding=venmo&currency=USD" async></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -213,7 +215,7 @@
   .tooltip-bubble{
     position:absolute;
     left:50%;
-    transform:translateX(-50%) translateY(4px);
+    transform:translateX(calc(-50% + var(--tooltip-shift, 0px))) translateY(4px);
     background:#0a0e15;
     color:#f4f7fb;
     font-family:'Inter',sans-serif;
@@ -226,6 +228,7 @@
     max-width:220px;
     text-align:center;
     white-space:normal;
+    word-break:break-word;
     box-shadow:0 10px 28px -6px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07);
     opacity:0;
     visibility:hidden;
@@ -233,11 +236,14 @@
     transition:opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
     z-index:90;
   }
+  @media (max-width:420px){
+    .tooltip-bubble{ max-width:min(200px, 78vw); }
+  }
   .tooltip-bubble::after{
     content:"";
     position:absolute;
     left:50%;
-    transform:translateX(-50%);
+    transform:translateX(calc(-50% - var(--tooltip-shift, 0px)));
     width:8px;height:8px;
     background:#0a0e15;
     border-radius:2px;
@@ -250,7 +256,7 @@
   .tooltip-anchor:focus-within .tooltip-bubble{
     opacity:1;
     visibility:visible;
-    transform:translateX(-50%) translateY(0);
+    transform:translateX(calc(-50% + var(--tooltip-shift, 0px))) translateY(0);
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -314,6 +320,8 @@ const ICON_PATHS = {
   settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></>,
   paperclip: <><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></>,
   "refresh-cw": <><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></>,
+  "external-link": <><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></>,
+  crown: <><path d="m2 20 1.5-9L8 15l4-8 4 8 4.5-4L22 20Z"/></>,
   mail: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></>,
   eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></>,
   "eye-off": <><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6 0 10 7 10 7a17 17 0 0 1-3.1 3.87M6.6 6.6A17.3 17.3 0 0 0 2 11s4 7 10 7a9.3 9.3 0 0 0 4.4-1.1M9.9 14.1a3 3 0 1 0 4.2-4.2"/><path d="M2 2l20 20"/></>,
@@ -336,11 +344,29 @@ function Icon({ name, size = 18, className = "", style = {} }) {
 // Pure CSS hover/focus tooltip: fades + slides in via CSS transitions only,
 // no JS state, so it appears/disappears immediately as the mouse enters/leaves.
 function Tooltip({ label, position = "top", className = "", children }) {
+  const anchorRef = useRef(null);
+  const bubbleRef = useRef(null);
+
+  const reposition = () => {
+    const anchor = anchorRef.current, bubble = bubbleRef.current;
+    if (!anchor || !bubble) return;
+    const margin = 10;
+    const anchorRect = anchor.getBoundingClientRect();
+    const bubbleWidth = bubble.offsetWidth || 220;
+    const anchorCenter = anchorRect.left + anchorRect.width / 2;
+    const idealLeft = anchorCenter - bubbleWidth / 2;
+    const idealRight = anchorCenter + bubbleWidth / 2;
+    let shift = 0;
+    if (idealLeft < margin) shift = margin - idealLeft;
+    else if (idealRight > window.innerWidth - margin) shift = (window.innerWidth - margin) - idealRight;
+    anchor.style.setProperty("--tooltip-shift", `${shift}px`);
+  };
+
   if (!label) return children;
   return (
-    <span className={`tooltip-anchor ${className}`}>
+    <span ref={anchorRef} className={`tooltip-anchor ${className}`} onMouseEnter={reposition} onFocus={reposition} onTouchStart={reposition}>
       {children}
-      <span className={`tooltip-bubble tooltip-${position}`} role="tooltip">{label}</span>
+      <span ref={bubbleRef} className={`tooltip-bubble tooltip-${position}`} role="tooltip">{label}</span>
     </span>
   );
 }
@@ -666,7 +692,7 @@ function toCSV(rows, headers) {
 
 /* ============================= DATA MIGRATION ============================= */
 function migrateData(raw) {
-  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, ...raw };
+  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, premium: { byos: false }, ...raw };
   if (raw && raw.debts) {
     const items = raw.debts.map((d) => ({
       id: d.id, type: "debt", name: d.name, contact: "", contactImage: null,
@@ -674,9 +700,9 @@ function migrateData(raw) {
       minPayment: d.minPayment || 0, dueDate: "", reminderDays: 3, notes: "",
       status: "active", createdAt: new Date().toISOString(), settledAt: null, history: [],
     }));
-    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
+    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, premium: { byos: false } };
   }
-  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
+  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, premium: { byos: false } };
 }
 
 /* ============================= PAYOFF SIMULATION (debts only) ============================= */
@@ -943,7 +969,7 @@ function FactoryResetModal({ onClose, onConfirm }) {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.8)" }} onClick={() => !busy && onClose()}>
-      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7" style={{ borderColor: "rgba(251,113,133,0.35)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" style={{ borderColor: "rgba(251,113,133,0.35)" }} onClick={(e) => e.stopPropagation()}>
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: "var(--danger-dim)", border: "1px solid rgba(251,113,133,0.4)" }}>
           <Icon name="triangle-alert" size={24} className="text-[var(--danger)]" />
         </div>
@@ -1172,7 +1198,7 @@ function ReceiptBadge({ receipt }) {
         <div className="fixed inset-0 z-[80] flex items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.85)" }} onClick={(e) => { e.stopPropagation(); setOpen(false); }}>
           <div className="modal-panel glass rounded-2xl p-4 max-w-lg w-full max-h-[85vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3 gap-3">
-              <span className="text-sm font-medium truncate">{receipt.name || "Receipt"}</span>
+              <span className="text-sm font-medium truncate min-w-0 flex-1">{receipt.name || "Receipt"}</span>
               <button onClick={() => setOpen(false)} className="icon-btn w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] shrink-0"><Icon name="x" size={16} /></button>
             </div>
             {receipt.type === "pdf" ? (
@@ -1332,7 +1358,7 @@ function TransactionModal({ item, onClose, onApply }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
-      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-lg font-semibold">{verb}</h2>
           <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
@@ -1555,7 +1581,7 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
                   <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto pr-1">
                     {[...initial.history].reverse().map((t) => (
                       <div key={t.id} className="flex items-center justify-between text-[12px] px-3 py-2 rounded-lg bg-[var(--surface)]">
-                        <span className="text-[var(--text-muted)] truncate">{fmtDate(t.date)} {t.note ? `· ${t.note}` : ""}</span>
+                        <span className="text-[var(--text-muted)] truncate min-w-0 flex-1">{fmtDate(t.date)} {t.note ? `· ${t.note}` : ""}</span>
                         <span className="flex items-center gap-1.5 shrink-0 ml-2">
                           <ReceiptBadge receipt={t.receipt} />
                           <span className="font-mono font-medium" style={{ color: t.kind === "payment" ? "var(--emerald)" : "var(--amber)" }}>
@@ -1748,7 +1774,7 @@ function ContactsView({ items, onOpenItem }) {
                 <div className="mt-3 pt-3 border-t border-[var(--border-soft)] space-y-2">
                   {c.items.map((it) => (
                     <div key={it.id} onClick={() => onOpenItem(it)} className="flex items-center justify-between text-[13px] px-2 py-1.5 rounded-lg hover:bg-[var(--surface-hover)] cursor-pointer">
-                      <span className="truncate">{it.name} {it.status === "settled" && <span className="text-[var(--text-dim)]">(settled)</span>}</span>
+                      <span className="truncate min-w-0 flex-1">{it.name} {it.status === "settled" && <span className="text-[var(--text-dim)]">(settled)</span>}</span>
                       <span className="font-mono" style={{ color: it.type === "debt" ? "var(--amber)" : "var(--azure)" }}>{fmtMoney(it.balance)}</span>
                     </div>
                   ))}
@@ -1889,7 +1915,7 @@ function StatisticsView({ items, sim, extraBudget, strategy }) {
             {topBalances.map((it, i) => (
               <div key={it.id} className="anim-in" style={{ animationDelay: `${i * 40}ms` }}>
                 <div className="flex items-center justify-between text-[13px] mb-1">
-                  <span className="truncate font-medium">{it.name}{it.contact ? ` · ${it.contact}` : ""}</span>
+                  <span className="truncate min-w-0 flex-1 font-medium">{it.name}{it.contact ? ` · ${it.contact}` : ""}</span>
                   <span className="font-mono text-[var(--text-muted)] shrink-0 ml-2">{fmtMoney(it.balance)}</span>
                 </div>
                 <div className="h-2.5 rounded-full bg-[#111726] overflow-hidden">
@@ -1946,7 +1972,7 @@ function ChangeCredentialModal({ onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={() => onClose(false)}>
-      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-lg font-semibold">
             {step === "current" ? "Confirm it's you" : step === "new" ? "Choose a new PIN" : "Confirm your new PIN"}
@@ -2132,6 +2158,8 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
         </p>
       </div>
 
+      <BYOSSection data={data} saveData={saveData} />
+
       {/* Danger zone */}
       <div className="glass rounded-3xl p-5 sm:p-6" style={{ borderColor: "#4a1f2b" }}>
         <div className="flex items-center gap-2 mb-2">
@@ -2147,6 +2175,186 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
       </div>
 
       {showChangeModal && <ChangeCredentialModal onClose={handleModalClose} onSubmit={onChangeCredential} />}
+    </div>
+  );
+}
+
+/* ============================= DATA PANEL (import / export / backup) ============================= */
+/* ============================= BRING YOUR OWN STORAGE (PREMIUM) ============================= */
+// Renders PayPal's Hosted Button into a container div once the PayPal SDK has loaded.
+// Hosted Buttons don't expose a JS success callback in their simple form — PayPal shows
+// its own confirmation inside the embedded button UI — so there's no way for this static,
+// backend-less app to verify a payment server-side. The checkout modal below is upfront
+// about that: it asks the person to confirm once they've completed checkout in the widget.
+function PayPalButton() {
+  const containerRef = useRef(null);
+  const [status, setStatus] = useState("loading"); // loading | ready | failed
+
+  useEffect(() => {
+    let cancelled = false;
+    // Poll for up to ~25s — the SDK script is async and can genuinely take a
+    // few seconds on a slow connection, so failing fast was giving a false
+    // "not configured" reading even once a valid client-id was in place.
+    const tryRender = (attemptsLeft) => {
+      if (cancelled || !containerRef.current) return;
+      if (window.paypal && window.paypal.HostedButtons) {
+        try {
+          containerRef.current.innerHTML = "";
+          window.paypal.HostedButtons({ hostedButtonId: "M2RLK38S8JW3Y" }).render(containerRef.current);
+          setStatus("ready");
+        } catch (e) {
+          setStatus("failed");
+        }
+        return;
+      }
+      if (attemptsLeft > 0) setTimeout(() => tryRender(attemptsLeft - 1), 500);
+      else setStatus("failed");
+    };
+    tryRender(50);
+    return () => { cancelled = true; };
+  }, []);
+
+  const retry = () => {
+    setStatus("loading");
+    let tries = 50;
+    const poll = () => {
+      if (window.paypal && window.paypal.HostedButtons) {
+        try {
+          containerRef.current.innerHTML = "";
+          window.paypal.HostedButtons({ hostedButtonId: "M2RLK38S8JW3Y" }).render(containerRef.current);
+          setStatus("ready");
+        } catch (e) { setStatus("failed"); }
+        return;
+      }
+      tries -= 1;
+      if (tries > 0) setTimeout(poll, 500);
+      else setStatus("failed");
+    };
+    poll();
+  };
+
+  if (status === "failed") {
+    return (
+      <div className="rounded-xl border border-[var(--amber-dim)] bg-[var(--amber-dim)] px-4 py-3 text-[12px] text-[var(--amber)] leading-relaxed">
+        <p className="mb-2">The PayPal button script didn't load in time. This usually means one of:</p>
+        <ul className="list-disc pl-4 space-y-1 mb-3">
+          <li>An ad blocker or privacy extension is blocking paypal.com/sdk/js</li>
+          <li>This page's domain isn't added to the allowed URLs for this Client ID in the PayPal developer dashboard</li>
+          <li>A slow or offline connection</li>
+        </ul>
+        <button onClick={retry} className="inline-flex items-center gap-1.5 text-[var(--amber)] font-medium hover:underline">
+          <Icon name="refresh-cw" size={12} /> Try again
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div>
+      {status === "loading" && <div className="h-11 flex items-center justify-center text-[12px] text-[var(--text-dim)]">Loading PayPal…</div>}
+      <div ref={containerRef} id="paypal-container-M2RLK38S8JW3Y" className={status === "loading" ? "hidden" : "min-h-[45px]"}></div>
+    </div>
+  );
+}
+
+function BYOSCheckoutModal({ onClose, onConfirmPurchase }) {
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => onConfirmPurchase(), 700);
+    return () => clearTimeout(t);
+  }, [confirming]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.75)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-lg font-semibold flex items-center gap-2">
+            <Icon name="crown" size={17} className="text-[var(--amber)]" /> Unlock BYOS
+          </h2>
+          <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
+        </div>
+        <p className="text-[13px] text-[var(--text-muted)] mb-5 leading-relaxed">
+          One-time payment of <span className="font-mono font-semibold text-[var(--text-primary)]">$19.99</span> — no subscription. Complete checkout below with PayPal.
+        </p>
+        <div className="rounded-2xl bg-white p-3 mb-5">
+          <PayPalButton />
+        </div>
+        <p className="text-[11px] text-[var(--text-dim)] mb-4 leading-relaxed">
+          Ledger has no server, so it can't verify your payment automatically. Once PayPal shows your checkout is complete, tap the button below to unlock BYOS on this device.
+        </p>
+        <button onClick={() => setConfirming(true)} disabled={confirming}
+          className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring disabled:opacity-50"
+          style={{ background: "var(--emerald)", color: "#06231a" }}>
+          {confirming ? "Unlocking…" : "I've completed my purchase"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BYOSSection({ data, saveData }) {
+  const unlocked = !!data.premium?.byos;
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [busyProvider, setBusyProvider] = useState("");
+
+  const confirmPurchase = () => {
+    saveData((prev) => ({ ...prev, premium: { ...prev.premium, byos: true, unlockedAt: new Date().toISOString() } }));
+    setShowCheckout(false);
+  };
+
+  const backupTo = (provider, url) => {
+    setBusyProvider(provider);
+    const payload = { app: "Ledger", exportedAt: new Date().toISOString(), items: data.items, extraBudget: data.extraBudget, strategy: data.strategy };
+    downloadFile(`ledger-backup-${todayISO()}.json`, JSON.stringify(payload, null, 2), "application/json");
+    window.open(url, "_blank", "noopener,noreferrer");
+    setTimeout(() => setBusyProvider(""), 1200);
+  };
+
+  const providers = [
+    { id: "drive", name: "Google Drive", url: "https://drive.google.com/drive/my-drive" },
+    { id: "dropbox", name: "Dropbox", url: "https://www.dropbox.com/home" },
+    { id: "onedrive", name: "OneDrive", url: "https://onedrive.live.com/" },
+  ];
+
+  return (
+    <div className="glass rounded-3xl p-5 sm:p-7">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon name="crown" size={17} className="text-[var(--amber)]" />
+        <h3 className="font-display font-semibold text-lg">Bring Your Own Storage</h3>
+        {unlocked && (
+          <span className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid #5c451a" }}>Premium</span>
+        )}
+      </div>
+
+      {!unlocked ? (
+        <>
+          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed mb-4">
+            Back up your encrypted data to your own Google Drive, Dropbox, or OneDrive — one-time payment of <span className="font-mono font-semibold text-[var(--text-primary)]">$19.99</span>, no subscription.
+          </p>
+          <button onClick={() => setShowCheckout(true)} className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-display font-semibold text-[13px] focus-ring" style={{ background: "var(--amber-dim)", border: "1px solid #5c451a", color: "var(--amber)" }}>
+            <Icon name="crown" size={15} /> Unlock BYOS — $19.99
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed mb-5">
+            Pick a provider — this downloads a fresh backup file and opens that provider's site so you can drop it in. Ledger has no API access to any of these accounts; it just hands you the file.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {providers.map((p) => (
+              <button key={p.id} onClick={() => backupTo(p.id, p.url)} disabled={busyProvider === p.id}
+                className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] focus-ring disabled:opacity-60">
+                <Icon name={busyProvider === p.id ? "check-circle" : "cloud"} size={22} className={busyProvider === p.id ? "text-[var(--emerald)]" : "text-[var(--azure)]"} />
+                <span className="text-[13px] font-medium">{p.name}</span>
+                <span className="text-[11px] text-[var(--text-dim)] flex items-center gap-1">Back up <Icon name="external-link" size={10} /></span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {showCheckout && <BYOSCheckoutModal onClose={() => setShowCheckout(false)} onConfirmPurchase={confirmPurchase} />}
     </div>
   );
 }
@@ -2330,7 +2538,7 @@ function DataPanel({ items, onClose, onImport }) {
             <div className="glass rounded-xl divide-y divide-[var(--border-soft)] max-h-64 overflow-y-auto mb-4">
               {importPreview.rows.slice(0, 8).map((r, i) => (
                 <div key={i} className="flex items-center justify-between px-3 py-2 text-[13px]">
-                  <span className="truncate">{r.name}{r.contact ? ` · ${r.contact}` : ""} <span className="text-[11px] text-[var(--text-dim)]">({r.type === "debt" ? "I Owe" : "Owed to Me"})</span></span>
+                  <span className="truncate min-w-0 flex-1">{r.name}{r.contact ? ` · ${r.contact}` : ""} <span className="text-[11px] text-[var(--text-dim)]">({r.type === "debt" ? "I Owe" : "Owed to Me"})</span></span>
                   <span className="font-mono shrink-0 ml-2">{fmtMoney(r.balance)}</span>
                 </div>
               ))}
@@ -2644,6 +2852,7 @@ function App() {
       security: { totpEnabled: false, totpSecret: null },
       profile: { name: "" },
       settings: { currency: "USD" },
+      premium: { byos: false },
     };
     const dataBlob = await encryptJSON(dek, initial);
 
