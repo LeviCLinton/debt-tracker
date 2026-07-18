@@ -29,8 +29,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- PayPal Hosted Buttons SDK -->
-<script src="https://www.paypal.com/sdk/js?client-id=AUltVtNXLH884U-wKcBMV928xiRv53Yc--mgepQhSAjAXSZiVaoNlwn6EdSKH6n2EXPJ0mUi1lj4rVGP&components=hosted-buttons&disable-funding=venmo&currency=USD" async></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -692,7 +690,7 @@ function toCSV(rows, headers) {
 
 /* ============================= DATA MIGRATION ============================= */
 function migrateData(raw) {
-  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, premium: { byos: false }, ...raw };
+  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, ...raw };
   if (raw && raw.debts) {
     const items = raw.debts.map((d) => ({
       id: d.id, type: "debt", name: d.name, contact: "", contactImage: null,
@@ -700,9 +698,9 @@ function migrateData(raw) {
       minPayment: d.minPayment || 0, dueDate: "", reminderDays: 3, notes: "",
       status: "active", createdAt: new Date().toISOString(), settledAt: null, history: [],
     }));
-    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, premium: { byos: false } };
+    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
   }
-  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, premium: { byos: false } };
+  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
 }
 
 /* ============================= PAYOFF SIMULATION (debts only) ============================= */
@@ -2179,129 +2177,9 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
   );
 }
 
-/* ============================= DATA PANEL (import / export / backup) ============================= */
-/* ============================= BRING YOUR OWN STORAGE (PREMIUM) ============================= */
-// Renders PayPal's Hosted Button into a container div once the PayPal SDK has loaded.
-// Hosted Buttons don't expose a JS success callback in their simple form — PayPal shows
-// its own confirmation inside the embedded button UI — so there's no way for this static,
-// backend-less app to verify a payment server-side. The checkout modal below is upfront
-// about that: it asks the person to confirm once they've completed checkout in the widget.
-function PayPalButton() {
-  const containerRef = useRef(null);
-  const [status, setStatus] = useState("loading"); // loading | ready | failed
-
-  useEffect(() => {
-    let cancelled = false;
-    // Poll for up to ~25s — the SDK script is async and can genuinely take a
-    // few seconds on a slow connection, so failing fast was giving a false
-    // "not configured" reading even once a valid client-id was in place.
-    const tryRender = (attemptsLeft) => {
-      if (cancelled || !containerRef.current) return;
-      if (window.paypal && window.paypal.HostedButtons) {
-        try {
-          containerRef.current.innerHTML = "";
-          window.paypal.HostedButtons({ hostedButtonId: "M2RLK38S8JW3Y" }).render(containerRef.current);
-          setStatus("ready");
-        } catch (e) {
-          setStatus("failed");
-        }
-        return;
-      }
-      if (attemptsLeft > 0) setTimeout(() => tryRender(attemptsLeft - 1), 500);
-      else setStatus("failed");
-    };
-    tryRender(50);
-    return () => { cancelled = true; };
-  }, []);
-
-  const retry = () => {
-    setStatus("loading");
-    let tries = 50;
-    const poll = () => {
-      if (window.paypal && window.paypal.HostedButtons) {
-        try {
-          containerRef.current.innerHTML = "";
-          window.paypal.HostedButtons({ hostedButtonId: "M2RLK38S8JW3Y" }).render(containerRef.current);
-          setStatus("ready");
-        } catch (e) { setStatus("failed"); }
-        return;
-      }
-      tries -= 1;
-      if (tries > 0) setTimeout(poll, 500);
-      else setStatus("failed");
-    };
-    poll();
-  };
-
-  if (status === "failed") {
-    return (
-      <div className="rounded-xl border border-[var(--amber-dim)] bg-[var(--amber-dim)] px-4 py-3 text-[12px] text-[var(--amber)] leading-relaxed">
-        <p className="mb-2">The PayPal button script didn't load in time. This usually means one of:</p>
-        <ul className="list-disc pl-4 space-y-1 mb-3">
-          <li>An ad blocker or privacy extension is blocking paypal.com/sdk/js</li>
-          <li>This page's domain isn't added to the allowed URLs for this Client ID in the PayPal developer dashboard</li>
-          <li>A slow or offline connection</li>
-        </ul>
-        <button onClick={retry} className="inline-flex items-center gap-1.5 text-[var(--amber)] font-medium hover:underline">
-          <Icon name="refresh-cw" size={12} /> Try again
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div>
-      {status === "loading" && <div className="h-11 flex items-center justify-center text-[12px] text-[var(--text-dim)]">Loading PayPal…</div>}
-      <div ref={containerRef} id="paypal-container-M2RLK38S8JW3Y" className={status === "loading" ? "hidden" : "min-h-[45px]"}></div>
-    </div>
-  );
-}
-
-function BYOSCheckoutModal({ onClose, onConfirmPurchase }) {
-  const [confirming, setConfirming] = useState(false);
-
-  useEffect(() => {
-    if (!confirming) return;
-    const t = setTimeout(() => onConfirmPurchase(), 700);
-    return () => clearTimeout(t);
-  }, [confirming]);
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.75)" }} onClick={onClose}>
-      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Icon name="crown" size={17} className="text-[var(--amber)]" /> Unlock BYOS
-          </h2>
-          <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
-        </div>
-        <p className="text-[13px] text-[var(--text-muted)] mb-5 leading-relaxed">
-          One-time payment of <span className="font-mono font-semibold text-[var(--text-primary)]">$19.99</span> — no subscription. Complete checkout below with PayPal.
-        </p>
-        <div className="rounded-2xl bg-white p-3 mb-5">
-          <PayPalButton />
-        </div>
-        <p className="text-[11px] text-[var(--text-dim)] mb-4 leading-relaxed">
-          Ledger has no server, so it can't verify your payment automatically. Once PayPal shows your checkout is complete, tap the button below to unlock BYOS on this device.
-        </p>
-        <button onClick={() => setConfirming(true)} disabled={confirming}
-          className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring disabled:opacity-50"
-          style={{ background: "var(--emerald)", color: "#06231a" }}>
-          {confirming ? "Unlocking…" : "I've completed my purchase"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
+/* ============================= BRING YOUR OWN STORAGE (free) ============================= */
 function BYOSSection({ data, saveData }) {
-  const unlocked = !!data.premium?.byos;
-  const [showCheckout, setShowCheckout] = useState(false);
   const [busyProvider, setBusyProvider] = useState("");
-
-  const confirmPurchase = () => {
-    saveData((prev) => ({ ...prev, premium: { ...prev.premium, byos: true, unlockedAt: new Date().toISOString() } }));
-    setShowCheckout(false);
-  };
 
   const backupTo = (provider, url) => {
     setBusyProvider(provider);
@@ -2320,41 +2198,22 @@ function BYOSSection({ data, saveData }) {
   return (
     <div className="glass rounded-3xl p-5 sm:p-7">
       <div className="flex items-center gap-2 mb-2">
-        <Icon name="crown" size={17} className="text-[var(--amber)]" />
+        <Icon name="cloud" size={17} className="text-[var(--azure)]" />
         <h3 className="font-display font-semibold text-lg">Bring Your Own Storage</h3>
-        {unlocked && (
-          <span className="text-[10px] font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: "var(--amber-dim)", color: "var(--amber)", border: "1px solid #5c451a" }}>Premium</span>
-        )}
       </div>
-
-      {!unlocked ? (
-        <>
-          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed mb-4">
-            Back up your encrypted data to your own Google Drive, Dropbox, or OneDrive — one-time payment of <span className="font-mono font-semibold text-[var(--text-primary)]">$19.99</span>, no subscription.
-          </p>
-          <button onClick={() => setShowCheckout(true)} className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-display font-semibold text-[13px] focus-ring" style={{ background: "var(--amber-dim)", border: "1px solid #5c451a", color: "var(--amber)" }}>
-            <Icon name="crown" size={15} /> Unlock BYOS — $19.99
+      <p className="text-[13px] text-[var(--text-muted)] leading-relaxed mb-5">
+        Back up your data to your own Google Drive, Dropbox, or OneDrive — free, for everyone. Pick a provider below: this downloads a fresh backup file and opens that provider's site so you can drop it in. Ledger has no API access to any of these accounts; it just hands you the file.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {providers.map((p) => (
+          <button key={p.id} onClick={() => backupTo(p.id, p.url)} disabled={busyProvider === p.id}
+            className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] focus-ring disabled:opacity-60">
+            <Icon name={busyProvider === p.id ? "check-circle" : "cloud"} size={22} className={busyProvider === p.id ? "text-[var(--emerald)]" : "text-[var(--azure)]"} />
+            <span className="text-[13px] font-medium">{p.name}</span>
+            <span className="text-[11px] text-[var(--text-dim)] flex items-center gap-1">Back up <Icon name="external-link" size={10} /></span>
           </button>
-        </>
-      ) : (
-        <>
-          <p className="text-[13px] text-[var(--text-muted)] leading-relaxed mb-5">
-            Pick a provider — this downloads a fresh backup file and opens that provider's site so you can drop it in. Ledger has no API access to any of these accounts; it just hands you the file.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {providers.map((p) => (
-              <button key={p.id} onClick={() => backupTo(p.id, p.url)} disabled={busyProvider === p.id}
-                className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] focus-ring disabled:opacity-60">
-                <Icon name={busyProvider === p.id ? "check-circle" : "cloud"} size={22} className={busyProvider === p.id ? "text-[var(--emerald)]" : "text-[var(--azure)]"} />
-                <span className="text-[13px] font-medium">{p.name}</span>
-                <span className="text-[11px] text-[var(--text-dim)] flex items-center gap-1">Back up <Icon name="external-link" size={10} /></span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {showCheckout && <BYOSCheckoutModal onClose={() => setShowCheckout(false)} onConfirmPurchase={confirmPurchase} />}
+        ))}
+      </div>
     </div>
   );
 }
@@ -2852,7 +2711,6 @@ function App() {
       security: { totpEnabled: false, totpSecret: null },
       profile: { name: "" },
       settings: { currency: "USD" },
-      premium: { byos: false },
     };
     const dataBlob = await encryptJSON(dek, initial);
 
