@@ -210,10 +210,16 @@
   .anim-pop{ animation: gentlePop 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
 
   .tooltip-anchor{ position:relative; display:inline-flex; }
-  .tooltip-bubble{
-    position:absolute;
-    left:50%;
-    transform:translateX(calc(-50% + var(--tooltip-shift, 0px))) translateY(4px);
+
+  /* Tooltip content is rendered through a React portal straight into <body>,
+     positioned with `position:fixed` computed from the trigger's own bounding
+     box. This is what actually fixes tooltips getting clipped or buried behind
+     other elements: as a plain CSS-only child of the trigger, a tooltip could
+     never escape an ancestor's `overflow:hidden`/`overflow:auto` (scrollable
+     cards, modals, etc.) no matter how high its z-index was. Portaling to the
+     document body removes it from that clipping ancestor entirely. */
+  @keyframes tooltipFadeIn{ from{ opacity:0; } to{ opacity:1; } }
+  .tooltip-bubble-portal{
     background:#0a0e15;
     color:#f4f7fb;
     font-family:'Inter',sans-serif;
@@ -223,39 +229,24 @@
     padding:7px 11px;
     border-radius:9px;
     width:max-content;
-    max-width:220px;
+    max-width:min(220px, 80vw);
     text-align:center;
     white-space:normal;
     word-break:break-word;
     box-shadow:0 10px 28px -6px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07);
-    opacity:0;
-    visibility:hidden;
     pointer-events:none;
-    transition:opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
-    z-index:90;
+    z-index:9999;
+    animation:tooltipFadeIn 0.14s ease both;
   }
-  @media (max-width:420px){
-    .tooltip-bubble{ max-width:min(200px, 78vw); }
-  }
-  .tooltip-bubble::after{
-    content:"";
+  .tooltip-portal-arrow{
     position:absolute;
-    left:50%;
-    transform:translateX(calc(-50% - var(--tooltip-shift, 0px)));
-    width:8px;height:8px;
+    width:8px; height:8px;
     background:#0a0e15;
     border-radius:2px;
+    transform:translateX(-50%);
   }
-  .tooltip-top{ bottom:calc(100% + 9px); }
-  .tooltip-top::after{ bottom:-3px; clip-path:polygon(0 0,100% 0,50% 100%); }
-  .tooltip-bottom{ top:calc(100% + 9px); }
-  .tooltip-bottom::after{ top:-3px; clip-path:polygon(50% 0,0 100%,100% 100%); }
-  .tooltip-anchor:hover .tooltip-bubble,
-  .tooltip-anchor:focus-within .tooltip-bubble{
-    opacity:1;
-    visibility:visible;
-    transform:translateX(calc(-50% + var(--tooltip-shift, 0px))) translateY(0);
-  }
+  .tooltip-portal-top .tooltip-portal-arrow{ bottom:-3px; clip-path:polygon(0 0,100% 0,50% 100%); }
+  .tooltip-portal-bottom .tooltip-portal-arrow{ top:-3px; clip-path:polygon(50% 0,0 100%,100% 100%); }
 
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
@@ -341,30 +332,74 @@ function Icon({ name, size = 18, className = "", style = {} }) {
 /* ============================= TOOLTIP ============================= */
 // Pure CSS hover/focus tooltip: fades + slides in via CSS transitions only,
 // no JS state, so it appears/disappears immediately as the mouse enters/leaves.
+function TooltipBubble({ coords, position, label }) {
+  const ref = useRef(null);
+  const [shift, setShift] = useState(0);
+  const isTop = position !== "bottom";
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const margin = 10;
+    const w = el.offsetWidth || 220;
+    const idealLeft = coords.left - w / 2;
+    const idealRight = coords.left + w / 2;
+    let s = 0;
+    if (idealLeft < margin) s = margin - idealLeft;
+    else if (idealRight > window.innerWidth - margin) s = (window.innerWidth - margin) - idealRight;
+    setShift(s);
+  }, [coords]);
+
+  const style = {
+    position: "fixed",
+    top: isTop ? coords.top - 9 : coords.top + 9,
+    left: coords.left + shift,
+    transform: isTop ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+  };
+
+  return (
+    <div ref={ref} style={style} className={`tooltip-bubble-portal ${isTop ? "tooltip-portal-top" : "tooltip-portal-bottom"}`} role="tooltip">
+      {label}
+      <span className="tooltip-portal-arrow" style={{ left: `calc(50% - ${shift}px)` }}></span>
+    </div>
+  );
+}
+
 function Tooltip({ label, position = "top", className = "", children }) {
   const anchorRef = useRef(null);
-  const bubbleRef = useRef(null);
+  const [visible, setVisible] = useState(false);
+  const [coords, setCoords] = useState(null);
 
-  const reposition = () => {
-    const anchor = anchorRef.current, bubble = bubbleRef.current;
-    if (!anchor || !bubble) return;
-    const margin = 10;
-    const anchorRect = anchor.getBoundingClientRect();
-    const bubbleWidth = bubble.offsetWidth || 220;
-    const anchorCenter = anchorRect.left + anchorRect.width / 2;
-    const idealLeft = anchorCenter - bubbleWidth / 2;
-    const idealRight = anchorCenter + bubbleWidth / 2;
-    let shift = 0;
-    if (idealLeft < margin) shift = margin - idealLeft;
-    else if (idealRight > window.innerWidth - margin) shift = (window.innerWidth - margin) - idealRight;
-    anchor.style.setProperty("--tooltip-shift", `${shift}px`);
+  const show = () => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    setCoords({ top: position === "bottom" ? rect.bottom : rect.top, left: rect.left + rect.width / 2 });
+    setVisible(true);
   };
+  const hide = () => setVisible(false);
+
+  // A tooltip left open during a scroll would end up glued to a stale
+  // position, so just dismiss it — it's cheap to re-trigger on next hover.
+  useEffect(() => {
+    if (!visible) return;
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    return () => {
+      window.removeEventListener("scroll", hide, true);
+      window.removeEventListener("resize", hide);
+    };
+  }, [visible]);
 
   if (!label) return children;
   return (
-    <span ref={anchorRef} className={`tooltip-anchor ${className}`} onMouseEnter={reposition} onFocus={reposition} onTouchStart={reposition}>
+    <span ref={anchorRef} className={`tooltip-anchor ${className}`}
+      onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide} onTouchStart={show} onTouchEnd={hide}>
       {children}
-      <span ref={bubbleRef} className={`tooltip-bubble tooltip-${position}`} role="tooltip">{label}</span>
+      {visible && coords && ReactDOM.createPortal(
+        <TooltipBubble coords={coords} position={position} label={label} />,
+        document.body
+      )}
     </span>
   );
 }
