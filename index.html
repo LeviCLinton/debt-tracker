@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <!-- The title displayed in Google search results -->
+<!-- The title displayed in Google search results -->
 <title>Ledger - Personal Debt & Receivable Tracker</title>
   <!-- The short snippet displayed under your title in search results -->
 <meta name="description" content="Track your personal debts, loans, and receivables completely offline. Keep your financial records private and secure with Ledger.">
@@ -39,28 +39,32 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-base:#080b11;
-    --bg-vignette: radial-gradient(circle at 50% -10%, #0f1622 0%, #080b11 55%);
-    --surface:#111827;
-    --surface-raised:#161f30;
-    --surface-hover:#1b2538;
-    --border:#232d40;
-    --border-soft:#1a2334;
-    --text-primary:#e9edf5;
-    --text-muted:#8895ab;
-    --text-dim:#5b6980;
-    --emerald:#34d399;
-    --emerald-dim:#0f3d30;
-    --azure:#3b9eff;
-    --azure-dim:#0f2c47;
-    --amber:#fbbf24;
-    --amber-dim:#3a2c0d;
-    --danger:#fb7185;
-    --danger-dim:#3a1520;
-    --violet:#a78bfa;
+    /* ===== Minimalist & Clean — warm white base, single amber/gold accent ===== */
+    --bg-base:#F6E4B8;
+    --bg-vignette:linear-gradient(160deg, #FFFCF3 0%, #FBEAC0 35%, #F3D68C 70%, #E9C169 100%);
+    --surface:#FFFFFF;
+    --surface-raised:#FFFFFF;
+    --surface-hover:#F3F1EA;
+    --border:#E7E4DC;
+    --border-soft:#EFEDE6;
+    --text-primary:#14120D;
+    --text-muted:#726F66;
+    --text-dim:#A8A499;
+    --emerald:#B8790A;
+    --emerald-dim:#F6EAD2;
+    --azure:#14120D;
+    --azure-dim:#F0EEE7;
+    --amber:#B8790A;
+    --amber-dim:#F6EAD2;
+    --danger:#B3392C;
+    --danger-dim:#F7E7E4;
+    --violet:#14120D;
+    --accent:#B8790A;
+    --accent-ink:#211804;
+    --accent-border:#E4C57C;
   }
   *{box-sizing:border-box;}
   html,body{background:var(--bg-base);}
@@ -85,8 +89,8 @@
   .font-mono{font-family:'JetBrains Mono',monospace;}
   ::-webkit-scrollbar{width:8px;height:8px;}
   ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:#232d40;border-radius:8px;}
-  ::selection{background:rgba(52,211,153,0.3);}
+  ::-webkit-scrollbar-thumb{background:#DDD9CF;border-radius:8px;}
+  ::selection{background:rgba(184,121,10,0.25);}
 
   @keyframes fadeSlideIn{
     from{opacity:0; transform:translateY(10px) scale(0.98);}
@@ -103,8 +107,8 @@
   .anim-shake{animation:shake 0.5s cubic-bezier(.36,.07,.19,.97) both;}
 
   @keyframes pulseRing{
-    0%,100%{box-shadow:0 0 0 0 var(--ring-color, rgba(52,211,153,0.55));}
-    50%{box-shadow:0 0 0 6px var(--ring-color-transparent, rgba(52,211,153,0));}
+    0%,100%{box-shadow:0 0 0 0 var(--ring-color, rgba(184,121,10,0.45));}
+    50%{box-shadow:0 0 0 6px var(--ring-color-transparent, rgba(184,121,10,0));}
   }
   .pulse-dot{animation:pulseRing 2.2s ease-in-out infinite;}
 
@@ -121,8 +125,9 @@
   .float-slow{animation:floatKey 5s ease-in-out infinite;}
 
   .glass{
-    background:linear-gradient(180deg, rgba(22,31,48,0.85) 0%, rgba(17,24,39,0.85) 100%);
-    backdrop-filter:blur(14px);
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(16px) saturate(140%);
+    -webkit-backdrop-filter:blur(16px) saturate(140%);
     border:1px solid var(--border-soft);
   }
 
@@ -135,26 +140,26 @@
     appearance:none;
     height:6px;
     border-radius:999px;
-    background:#1c2740;
+    background:#EEEBE3;
     outline:none;
   }
   .slider-track::-webkit-slider-thumb{
     -webkit-appearance:none;
     width:18px;height:18px;border-radius:50%;
     background:var(--emerald);
-    box-shadow:0 0 0 4px rgba(52,211,153,0.18), 0 2px 6px rgba(0,0,0,0.4);
+    box-shadow:0 0 0 4px rgba(184,121,10,0.18), 0 2px 6px rgba(20,18,13,0.18);
     cursor:pointer;
-    border:2px solid #071310;
+    border:2px solid #E7E4DC;
     transition:transform 0.15s ease;
   }
   .slider-track::-webkit-slider-thumb:hover{transform:scale(1.12);}
   .slider-track::-moz-range-thumb{
     width:18px;height:18px;border-radius:50%;
-    background:var(--emerald); border:2px solid #071310; cursor:pointer;
+    background:var(--emerald); border:2px solid #E7E4DC; cursor:pointer;
   }
 
-  .pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid #3a4863;transition:all 0.18s ease;}
-  .pin-dot.filled{background:var(--emerald);border-color:var(--emerald);box-shadow:0 0 10px rgba(52,211,153,0.6);}
+  .pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid #D6D2C6;transition:all 0.18s ease;}
+  .pin-dot.filled{background:var(--emerald);border-color:var(--emerald);box-shadow:0 0 10px rgba(184,121,10,0.45);}
 
   .keypad-btn{ transition:all 0.12s ease; font-family:'Space Grotesk',sans-serif; }
   .keypad-btn:active{transform:scale(0.92); background:var(--surface-hover);}
@@ -163,7 +168,39 @@
   .tab-btn{ transition: all 0.18s ease; }
 
   .item-card{ transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease; }
-  .item-card:hover{ transform:translateY(-2px); border-color:#2c3a54; box-shadow:0 8px 24px -8px rgba(0,0,0,0.5); }
+  .item-card:hover{ border-color:#D9D5C9; }
+
+  .item-card-tilt{ transition: transform 0.12s ease-out, border-color 0.18s ease, box-shadow 0.18s ease; will-change: transform; position:relative; overflow:hidden; }
+  .item-card-tilt::before{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(circle at var(--glare-x,50%) var(--glare-y,50%), rgba(255,255,255,0.07), transparent 55%);
+    opacity:0; transition:opacity 0.2s ease;
+    pointer-events:none;
+  }
+  .item-card-tilt:hover::before{ opacity:1; }
+
+  @keyframes confettiBurst{
+    0%{ transform:translate(0,0) rotate(0deg); opacity:1; }
+    100%{ transform:translate(var(--tx),var(--ty)) rotate(var(--rot)); opacity:0; }
+  }
+  .confetti-piece{
+    position:absolute;
+    width:7px; height:12px;
+    border-radius:2px;
+    animation:confettiBurst 1.15s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  .confetti-round{ border-radius:50%; width:8px; height:8px; }
+
+  .ripple-host{ position:relative; overflow:hidden; }
+  .ripple-dot{
+    position:absolute; border-radius:50%;
+    background:rgba(255,255,255,0.35);
+    transform:scale(0);
+    animation: rippleAnim 0.6s ease-out forwards;
+    pointer-events:none;
+  }
+  @keyframes rippleAnim{ to{ transform:scale(1); opacity:0; } }
 
   .gantt-bar{ transition: width 1.1s cubic-bezier(0.16,1,0.3,1); }
   .progress-bar-fill{ transition: width 0.9s cubic-bezier(0.16,1,0.3,1); }
@@ -187,7 +224,7 @@
   .dropzone{
     border:1.5px dashed var(--border); border-radius:20px; transition: border-color 0.2s ease, background 0.2s ease;
   }
-  .dropzone.drag-over{ border-color:var(--emerald); background:rgba(52,211,153,0.06); }
+  .dropzone.drag-over{ border-color:var(--emerald); background:rgba(184,121,10,0.06); }
 
   select.styled-select{
     appearance:none; -webkit-appearance:none; background-image:none;
@@ -195,18 +232,23 @@
   .no-scrollbar{ scrollbar-width:none; -ms-overflow-style:none; }
   .no-scrollbar::-webkit-scrollbar{ display:none; }
 
-  .auth-bg-orb{ position:fixed; border-radius:50%; filter:blur(70px); opacity:0.32; pointer-events:none; z-index:0; }
-  .auth-orb-1{ width:440px; height:440px; background:radial-gradient(circle, #34d399, transparent 70%); top:-140px; left:-120px; animation: driftA 15s ease-in-out infinite; }
-  .auth-orb-2{ width:400px; height:400px; background:radial-gradient(circle, #3b9eff, transparent 70%); bottom:-160px; right:-120px; animation: driftB 17s ease-in-out infinite; }
-  .auth-orb-3{ width:260px; height:260px; background:radial-gradient(circle, #fbbf24, transparent 70%); top:40%; right:10%; animation: driftA 20s ease-in-out infinite reverse; opacity:0.18; }
+  .collapse-grid{ display:grid; grid-template-rows:0fr; transition:grid-template-rows 0.32s cubic-bezier(0.16,1,0.3,1); }
+  .collapse-grid.open{ grid-template-rows:1fr; }
+  .collapse-inner{ overflow:hidden; min-height:0; }
+
+  .auth-bg-orb{ position:fixed; border-radius:50%; filter:blur(70px); opacity:0.13; pointer-events:none; z-index:0; }
+  .dash-bg-orb{ position:fixed; border-radius:50%; filter:blur(90px); opacity:0.07; pointer-events:none; z-index:0; }
+  .auth-orb-1{ width:440px; height:440px; background:radial-gradient(circle, #D4A552, transparent 70%); top:-140px; left:-120px; animation: driftA 15s ease-in-out infinite; }
+  .auth-orb-2{ width:400px; height:400px; background:radial-gradient(circle, #14120D, transparent 70%); bottom:-160px; right:-120px; animation: driftB 17s ease-in-out infinite; }
+  .auth-orb-3{ width:260px; height:260px; background:radial-gradient(circle, #B8790A, transparent 70%); top:40%; right:10%; animation: driftA 20s ease-in-out infinite reverse; opacity:0.5; }
   @keyframes driftA{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(36px,26px) scale(1.06); } }
   @keyframes driftB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-30px,-34px) scale(1.05); } }
 
-  .strength-bar{ height:5px; border-radius:999px; background:#1c2740; overflow:hidden; }
+  .strength-bar{ height:5px; border-radius:999px; background:#EEEBE3; overflow:hidden; }
   .strength-fill{ height:100%; border-radius:999px; transition:width 0.35s cubic-bezier(0.16,1,0.3,1), background 0.35s ease; }
 
   .social-btn{ transition: background 0.15s ease, transform 0.12s ease, border-color 0.15s ease; }
-  .social-btn:hover{ background:var(--surface-hover); transform:translateY(-1px); border-color:#2c3a54; }
+  .social-btn:hover{ background:var(--surface-hover); transform:translateY(-1px); border-color:#D9D5C9; }
   .social-btn:active{ transform:scale(0.98); }
 
   .recovery-code-capsule{ font-family:'JetBrains Mono',monospace; letter-spacing:0.06em; }
@@ -228,20 +270,20 @@
      document body removes it from that clipping ancestor entirely. */
   @keyframes tooltipFadeIn{ from{ opacity:0; } to{ opacity:1; } }
   .tooltip-bubble-portal{
-    background:#0a0e15;
+    background:#1A1712;
     color:#f4f7fb;
     font-family:'Inter',sans-serif;
     font-size:11.5px;
     font-weight:500;
     line-height:1.35;
-    padding:7px 11px;
-    border-radius:9px;
+    padding:7px 14px;
+    border-radius:9999px;
     width:max-content;
     max-width:min(220px, 80vw);
     text-align:center;
     white-space:normal;
     word-break:break-word;
-    box-shadow:0 10px 28px -6px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.07);
+    box-shadow:0 4px 16px -4px rgba(20,18,13,0.16), 0 0 0 1px rgba(20,18,13,0.08);
     pointer-events:none;
     z-index:9999;
     animation:tooltipFadeIn 0.14s ease both;
@@ -249,12 +291,21 @@
   .tooltip-portal-arrow{
     position:absolute;
     width:8px; height:8px;
-    background:#0a0e15;
+    background:#1A1712;
     border-radius:2px;
     transform:translateX(-50%);
   }
   .tooltip-portal-top .tooltip-portal-arrow{ bottom:-3px; clip-path:polygon(0 0,100% 0,50% 100%); }
   .tooltip-portal-bottom .tooltip-portal-arrow{ top:-3px; clip-path:polygon(50% 0,0 100%,100% 100%); }
+
+  /* ===== Design system: single consistent pill radius everywhere (no mixed radii) ===== */
+  [class*="rounded-"]{ border-radius:9999px !important; }
+  .avatar{ border-radius:9999px; }
+
+  /* ===== Typography: extreme weight contrast instead of color changes ===== */
+  .font-display{ font-weight:800 !important; letter-spacing:-0.01em; }
+  body{ font-weight:400; }
+  [class*="text-[var(--text-muted)]"], [class*="text-[var(--text-dim)]"]{ font-weight:300; }
 
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
@@ -828,13 +879,14 @@ function contactSummaries(items) {
 
 /* ============================= AUTH SCREENS ============================= */
 function AuthBackground() {
-  return (
-    <>
-      <div className="auth-bg-orb auth-orb-1"></div>
-      <div className="auth-bg-orb auth-orb-2"></div>
-      <div className="auth-bg-orb auth-orb-3"></div>
-    </>
-  );
+  // Minimalist & Clean intentionally has no decorative gradient blobs —
+  // just quiet, flat space. Kept as a component (rendering nothing) so every
+  // call site that already references it doesn't need to change.
+  return null;
+}
+
+function DashboardBackground() {
+  return null;
 }
 
 function PinPad({ onDigit, onBack }) {
@@ -879,7 +931,7 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mb-5 float-slow anim-pop">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--emerald-dim)] border border-[#E4C57C] flex items-center justify-center mb-5 float-slow anim-pop">
             <Icon name={icon} size={28} className="text-[var(--emerald)]" />
           </div>
           <h1 className="font-display text-2xl font-semibold tracking-tight text-center">{title}</h1>
@@ -914,11 +966,11 @@ function CredentialScreen({ mode, title, subtitle, icon = "lock", onSubmit, erro
             </>
           )}
 
-          <button onClick={submit} disabled={!canSubmit}
+          <RippleButton onClick={submit} disabled={!canSubmit}
             className="w-full mt-6 h-12 rounded-2xl font-display font-semibold text-[15px] transition-all focus-ring disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ background: canSubmit ? "var(--emerald)" : "var(--surface)", color: canSubmit ? "#06231a" : "var(--text-dim)" }}>
+            style={{ background: canSubmit ? "var(--emerald)" : "var(--surface)", color: canSubmit ? "#211804" : "var(--text-dim)" }}>
             {submitLabel}
-          </button>
+          </RippleButton>
 
           {showForgot && (
             <button onClick={onForgot} className="w-full text-center text-[12px] text-[var(--text-muted)] hover:text-[var(--emerald)] mt-4 focus-ring transition-colors">
@@ -960,7 +1012,7 @@ function RecoveryRevealScreen({ code, note, onContinue, continueLabel = "Continu
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--amber-dim)] border border-[#5c451a] flex items-center justify-center mb-5 float-slow anim-pop">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--amber-dim)] border border-[#E4C57C] flex items-center justify-center mb-5 float-slow anim-pop">
             <Icon name="key" size={26} className="text-[var(--amber)]" />
           </div>
           <h1 className="font-display text-2xl font-semibold text-center">Save your recovery code</h1>
@@ -970,7 +1022,7 @@ function RecoveryRevealScreen({ code, note, onContinue, continueLabel = "Continu
         </div>
         <div className="glass rounded-3xl p-5 sm:p-7 text-center">
           <div className="recovery-code-capsule text-xl font-semibold px-4 py-4 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)] mb-4 select-all anim-pop">{code}</div>
-          <div className="grid grid-cols-2 gap-2.5 mb-6">
+          <div className="grid grid-cols-2 gap-2 mb-6">
             <button onClick={copy} className="social-btn inline-flex items-center justify-center gap-2 h-11 rounded-xl border border-[var(--border-soft)] text-[13px] font-medium focus-ring" style={{ color: copied ? "var(--emerald)" : "var(--text-primary)" }}>
               <Icon name={copied ? "check-circle" : "receipt"} size={14} /> {copied ? "Copied!" : "Copy code"}
             </button>
@@ -978,14 +1030,14 @@ function RecoveryRevealScreen({ code, note, onContinue, continueLabel = "Continu
               <Icon name={downloaded ? "check-circle" : "download"} size={14} /> {downloaded ? "Downloaded!" : "Download"}
             </button>
           </div>
-          <label className={`flex items-start gap-2.5 text-left mb-5 ${saved ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
+          <label className={`flex items-start gap-2 text-left mb-5 ${saved ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
             <input type="checkbox" checked={confirmed} disabled={!saved} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-[var(--emerald)]" />
             <span className="text-[13px] text-[var(--text-muted)]">I've saved this somewhere safe — I understand Ledger can't recover it for me.</span>
           </label>
           {!saved && <p className="text-[11px] text-[var(--amber)] -mt-3 mb-5">Copy or download your code first to unlock this checkbox.</p>}
           <button onClick={onContinue} disabled={!confirmed}
             className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring transition-all"
-            style={{ background: confirmed ? "var(--emerald)" : "var(--surface)", color: confirmed ? "#06231a" : "var(--text-dim)" }}>
+            style={{ background: confirmed ? "var(--emerald)" : "var(--surface)", color: confirmed ? "#211804" : "var(--text-dim)" }}>
             {continueLabel}
           </button>
         </div>
@@ -1010,7 +1062,7 @@ function FactoryResetModal({ onClose, onConfirm }) {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.8)" }} onClick={() => !busy && onClose()}>
-      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" style={{ borderColor: "rgba(251,113,133,0.35)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" style={{ borderColor: "rgba(251,113,133,0.35)" }} onClick={(e) => e.stopPropagation()}>
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5" style={{ background: "var(--danger-dim)", border: "1px solid rgba(251,113,133,0.4)" }}>
           <Icon name="triangle-alert" size={24} className="text-[var(--danger)]" />
         </div>
@@ -1018,7 +1070,7 @@ function FactoryResetModal({ onClose, onConfirm }) {
         <p className="text-[13px] text-[var(--text-muted)] leading-relaxed mb-5">
           This permanently deletes your PIN, backup code, and every debt, receivable, and receipt stored on this device. There is no server copy to fall back on — <span className="text-[var(--danger)] font-medium">this cannot be undone.</span>
         </p>
-        <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">
+        <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">
           Type <span className="font-mono text-[var(--danger)]">RESET</span> to confirm
         </label>
         <input autoFocus type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value)}
@@ -1031,7 +1083,7 @@ function FactoryResetModal({ onClose, onConfirm }) {
           </button>
           <button onClick={handleConfirm} disabled={!canReset || busy}
             className="flex-1 h-12 rounded-2xl font-display font-semibold text-[15px] text-white disabled:opacity-30 disabled:cursor-not-allowed focus-ring transition-all"
-            style={{ background: "linear-gradient(135deg, #fb7185, #dc2626)" }}>
+            style={{ background: "linear-gradient(135deg, #C0453A, #96271D)" }}>
             {busy ? "Wiping…" : "Wipe Data & Reset"}
           </button>
         </div>
@@ -1045,7 +1097,7 @@ function TwoFAOfferScreen({ onEnable, onSkip }) {
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#1c3a5c] flex items-center justify-center mb-5 float-slow anim-pop">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#DEDBD2] flex items-center justify-center mb-5 float-slow anim-pop">
             <Icon name="shield-check" size={26} className="text-[var(--azure)]" />
           </div>
           <h1 className="font-display text-2xl font-semibold text-center">Add two-factor authentication?</h1>
@@ -1054,7 +1106,7 @@ function TwoFAOfferScreen({ onEnable, onSkip }) {
           </p>
         </div>
         <div className="glass rounded-3xl p-5 sm:p-6 space-y-3">
-          <button onClick={onEnable} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring transition-transform active:scale-[0.98]" style={{ background: "var(--emerald)", color: "#06231a" }}>Set up 2FA</button>
+          <button onClick={onEnable} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring transition-transform active:scale-[0.98]" style={{ background: "var(--emerald)", color: "#211804" }}>Set up 2FA</button>
           <button onClick={onSkip} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] text-[var(--text-muted)] border border-[var(--border-soft)] focus-ring hover:bg-[var(--surface-hover)] transition-colors">Skip for now</button>
         </div>
       </div>
@@ -1070,7 +1122,7 @@ function TwoFASetupScreen({ secret, otpauthUrl, onVerify, onSkip, error }) {
   useEffect(() => {
     if (window.QRCode && qrRef.current) {
       qrRef.current.innerHTML = "";
-      new window.QRCode(qrRef.current, { text: otpauthUrl, width: 168, height: 168, colorDark: "#0a0e15", colorLight: "#ffffff" });
+      new window.QRCode(qrRef.current, { text: otpauthUrl, width: 168, height: 168, colorDark: "#1A1712", colorLight: "#ffffff" });
     }
   }, [otpauthUrl]);
   useEffect(() => {
@@ -1094,7 +1146,7 @@ function TwoFASetupScreen({ secret, otpauthUrl, onVerify, onSkip, error }) {
           {error && <p className="text-[var(--danger)] text-xs mb-2 font-medium">{error}</p>}
           <button onClick={() => onVerify(code)} disabled={code.length !== 6}
             className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring mt-3 transition-all"
-            style={{ background: code.length === 6 ? "var(--emerald)" : "var(--surface)", color: code.length === 6 ? "#06231a" : "var(--text-dim)" }}>
+            style={{ background: code.length === 6 ? "var(--emerald)" : "var(--surface)", color: code.length === 6 ? "#211804" : "var(--text-dim)" }}>
             Confirm &amp; enable
           </button>
           <button onClick={onSkip} className="w-full text-center text-[12px] text-[var(--text-muted)] hover:text-[var(--text-primary)] mt-4 focus-ring">Skip for now</button>
@@ -1114,7 +1166,7 @@ function TwoFAVerifyScreen({ onVerify, error }) {
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#1c3a5c] flex items-center justify-center mb-5 float-slow anim-pop">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#DEDBD2] flex items-center justify-center mb-5 float-slow anim-pop">
             <Icon name="shield-check" size={26} className="text-[var(--azure)]" />
           </div>
           <h1 className="font-display text-2xl font-semibold text-center">Two-factor code</h1>
@@ -1127,7 +1179,7 @@ function TwoFAVerifyScreen({ onVerify, error }) {
           {error && <p className="text-[var(--danger)] text-xs text-center mb-3 font-medium">{error}</p>}
           <button onClick={() => onVerify(code)} disabled={code.length !== 6}
             className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring mt-2 transition-all"
-            style={{ background: code.length === 6 ? "var(--emerald)" : "var(--surface)", color: code.length === 6 ? "#06231a" : "var(--text-dim)" }}>
+            style={{ background: code.length === 6 ? "var(--emerald)" : "var(--surface)", color: code.length === 6 ? "#211804" : "var(--text-dim)" }}>
             Verify
           </button>
         </div>
@@ -1143,7 +1195,7 @@ function ForgotExplainScreen({ onHaveCode, onBackToLogin, onFactoryReset }) {
     <div className="min-h-screen flex items-center justify-center px-5 py-10 relative z-10">
       <div className="w-full max-w-sm anim-rise">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#1c3a5c] flex items-center justify-center mb-5 float-slow anim-pop">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--azure-dim)] border border-[#DEDBD2] flex items-center justify-center mb-5 float-slow anim-pop">
             <Icon name="key" size={26} className="text-[var(--azure)]" />
           </div>
           <h1 className="font-display text-2xl font-semibold text-center">Reset your PIN</h1>
@@ -1152,7 +1204,7 @@ function ForgotExplainScreen({ onHaveCode, onBackToLogin, onFactoryReset }) {
           </p>
         </div>
         <div className="glass rounded-3xl p-5 sm:p-6 space-y-3">
-          <button onClick={onHaveCode} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring transition-transform active:scale-[0.98]" style={{ background: "var(--emerald)", color: "#06231a" }}>
+          <button onClick={onHaveCode} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] focus-ring transition-transform active:scale-[0.98]" style={{ background: "var(--emerald)", color: "#211804" }}>
             I have my recovery code
           </button>
           <button onClick={onBackToLogin} className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] text-[var(--text-muted)] border border-[var(--border-soft)] focus-ring hover:bg-[var(--surface-hover)] transition-colors">
@@ -1160,7 +1212,7 @@ function ForgotExplainScreen({ onHaveCode, onBackToLogin, onFactoryReset }) {
           </button>
         </div>
         <div className="mt-6 pt-5 border-t border-[var(--border-soft)] text-center">
-          <p className="text-[12px] text-[var(--text-dim)] mb-2.5 max-w-[300px] mx-auto leading-relaxed">
+          <p className="text-[12px] text-[var(--text-dim)] mb-2 max-w-[300px] mx-auto leading-relaxed">
             Lost your recovery code too? There's genuinely no way to unlock this data by design — but you can wipe it and start fresh.
           </p>
           <button onClick={onFactoryReset} className="text-[12px] font-medium text-[var(--danger)] hover:underline focus-ring">
@@ -1173,12 +1225,38 @@ function ForgotExplainScreen({ onHaveCode, onBackToLogin, onFactoryReset }) {
 }
 
 /* ============================= SHARED UI BITS ============================= */
-function MetricCard({ icon, label, value, sub, accent, delay = 0, tip }) {
+function useCountUp(value, duration = 650) {
+  const [display, setDisplay] = useState(value);
+  const prevRef = useRef(value);
+  const rafRef = useRef(null);
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = value;
+    if (from === to || Number.isNaN(from) || Number.isNaN(to)) { setDisplay(to); prevRef.current = to; return; }
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      setDisplay(from + (to - from) * eased);
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
+      else prevRef.current = to;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value, duration]);
+  return display;
+}
+
+function MetricCard({ icon, label, value, sub, accent, delay = 0, tip, animateValue, signed }) {
+  const animated = useCountUp(animateValue ?? 0);
+  const displayValue = animateValue !== undefined
+    ? (signed ? `${animated >= 0 ? "+" : ""}${fmtMoney(animated)}` : fmtMoney(animated))
+    : value;
   const accentMap = {
-    emerald: { bg: "var(--emerald-dim)", border: "#1c4f3c", text: "var(--emerald)" },
-    azure: { bg: "var(--azure-dim)", border: "#1c3a5c", text: "var(--azure)" },
-    amber: { bg: "var(--amber-dim)", border: "#5c451a", text: "var(--amber)" },
-    violet: { bg: "#241b3d", border: "#3a2d5c", text: "var(--violet)" },
+    emerald: { bg: "var(--emerald-dim)", border: "#E4C57C", text: "var(--emerald)" },
+    azure: { bg: "var(--azure-dim)", border: "#DEDBD2", text: "var(--azure)" },
+    amber: { bg: "var(--amber-dim)", border: "#E4C57C", text: "var(--amber)" },
+    violet: { bg: "#241b3d", border: "#DEDBD2", text: "var(--violet)" },
   };
   const a = accentMap[accent];
   return (
@@ -1191,7 +1269,7 @@ function MetricCard({ icon, label, value, sub, accent, delay = 0, tip }) {
         </Tooltip>
         <span className="text-[11px] uppercase tracking-widest text-[var(--text-dim)] font-medium">{label}</span>
       </div>
-      <div className="font-mono text-3xl sm:text-[32px] font-semibold tracking-tight leading-none">{value}</div>
+      <div className="font-mono text-3xl sm:text-[32px] font-semibold tracking-tight leading-none">{displayValue}</div>
       {sub && <div className="text-[13px] text-[var(--text-muted)] mt-2">{sub}</div>}
     </div>
   );
@@ -1247,7 +1325,7 @@ function ReceiptBadge({ receipt }) {
             ) : (
               <img src={receipt.dataUrl} alt={receipt.name || "Receipt"} className="w-full h-auto rounded-lg" />
             )}
-            <a href={receipt.dataUrl} download={receipt.name || "receipt"} className="inline-flex items-center gap-1.5 mt-3 text-[12px] font-medium text-[var(--emerald)] hover:underline">
+            <a href={receipt.dataUrl} download={receipt.name || "receipt"} className="inline-flex items-center gap-2 mt-3 text-[12px] font-medium text-[var(--emerald)] hover:underline">
               <Icon name="download" size={13} /> Download original
             </a>
           </div>
@@ -1257,16 +1335,41 @@ function ReceiptBadge({ receipt }) {
   );
 }
 
+/* A drop-in button with a material-style click ripple. Used on the highest-
+   traffic actions (auth submit, primary "add" CTAs) rather than every button
+   in the app, to keep the effect feeling special rather than noisy. */
+function RippleButton({ className = "", style, onClick, children, disabled, ...rest }) {
+  const [ripples, setRipples] = useState([]);
+  const spawn = (e) => {
+    if (disabled) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 1.6;
+    const id = Date.now() + Math.random();
+    const x = e.clientX - rect.left - size / 2;
+    const y = e.clientY - rect.top - size / 2;
+    setRipples((r) => [...r, { id, x, y, size }]);
+    setTimeout(() => setRipples((r) => r.filter((rp) => rp.id !== id)), 600);
+  };
+  return (
+    <button className={`ripple-host ${className}`} style={style} onMouseDown={spawn} onClick={onClick} disabled={disabled} {...rest}>
+      {children}
+      {ripples.map((r) => (
+        <span key={r.id} className="ripple-dot" style={{ left: r.x, top: r.y, width: r.size, height: r.size }}></span>
+      ))}
+    </button>
+  );
+}
+
 function EmptyState({ icon = "landmark", title, sub, cta, onCta }) {
   return (
     <div className="glass rounded-3xl p-10 sm:p-14 text-center anim-in">
-      <div className="w-14 h-14 rounded-2xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center mx-auto mb-5">
+      <div className="w-14 h-14 rounded-2xl bg-[var(--emerald-dim)] border border-[#E4C57C] flex items-center justify-center mx-auto mb-5">
         <Icon name={icon} size={24} className="text-[var(--emerald)]" />
       </div>
       <h3 className="font-display text-xl font-semibold mb-2">{title}</h3>
       <p className="text-[var(--text-muted)] text-sm mb-6 max-w-sm mx-auto">{sub}</p>
       {cta && (
-        <button onClick={onCta} className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-display font-semibold text-sm focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+        <button onClick={onCta} className="inline-flex items-center gap-2 h-11 px-5 rounded-2xl font-display font-semibold text-sm focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
           <Icon name="plus" size={16} /> {cta}
         </button>
       )}
@@ -1327,8 +1430,25 @@ function Toolbar({ query, setQuery, sortBy, setSortBy, sortDir, setSortDir, stat
 function ItemCard({ item, rank, accentColor, onOpen, delay }) {
   const pct = progressPct(item);
   const isDebt = item.type === "debt";
+  const cardRef = useRef(null);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, glareX: 50, glareY: 50 });
+  const [hovering, setHovering] = useState(false);
+
+  const handleMove = (e) => {
+    const el = cardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
+    setHovering(true);
+    setTilt({ rx: (0.5 - py) * 6, ry: (px - 0.5) * 6, glareX: px * 100, glareY: py * 100 });
+  };
+  const handleLeave = () => { setHovering(false); setTilt({ rx: 0, ry: 0, glareX: 50, glareY: 50 }); };
+
   return (
-    <div className="item-card glass rounded-2xl p-4 sm:p-5 cursor-pointer anim-in" style={{ animationDelay: `${delay}ms` }} onClick={() => onOpen(item)}>
+    <div ref={cardRef} className="item-card item-card-tilt glass rounded-2xl p-4 sm:p-5 cursor-pointer anim-in"
+      style={{ animationDelay: `${delay}ms`, transform: `perspective(700px) translateY(${hovering ? -3 : 0}px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`, "--glare-x": `${tilt.glareX}%`, "--glare-y": `${tilt.glareY}%` }}
+      onMouseMove={handleMove} onMouseLeave={handleLeave} onClick={() => onOpen(item)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar image={item.contactImage} name={item.contact || item.name} size={38} />
@@ -1351,11 +1471,11 @@ function ItemCard({ item, rank, accentColor, onOpen, delay }) {
         </div>
       </div>
       <div className="mt-4">
-        <div className="flex items-center justify-between text-[11px] text-[var(--text-dim)] mb-1.5">
+        <div className="flex items-center justify-between text-[11px] text-[var(--text-dim)] mb-2">
           <span>{Math.round(pct)}% paid off</span>
           {item.dueDate && <DueBadge item={item} />}
         </div>
-        <div className="h-1.5 rounded-full bg-[#1c2740] overflow-hidden">
+        <div className="h-1.5 rounded-full bg-[#EEEBE3] overflow-hidden">
           <div className="progress-bar-fill h-full rounded-full" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${accentColor.text}88, ${accentColor.text})` }}></div>
         </div>
       </div>
@@ -1398,25 +1518,25 @@ function TransactionModal({ item, onClose, onApply }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
-      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-lg font-semibold">{verb}</h2>
           <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
         </div>
         <div className="glass rounded-2xl p-1 grid grid-cols-2 mb-5">
           <button onClick={() => setKind("payment")} className={`py-2.5 rounded-xl text-sm font-medium font-display transition-all ${kind === "payment" ? "" : "text-[var(--text-muted)]"}`}
-            style={{ background: kind === "payment" ? "var(--emerald-dim)" : "transparent", color: kind === "payment" ? "var(--emerald)" : undefined, border: kind === "payment" ? "1px solid #1c4f3c" : "1px solid transparent" }}>
+            style={{ background: kind === "payment" ? "var(--emerald-dim)" : "transparent", color: kind === "payment" ? "var(--emerald)" : undefined, border: kind === "payment" ? "1px solid #E4C57C" : "1px solid transparent" }}>
             <Icon name="minus-circle" size={14} className="inline mr-1.5 -mt-0.5" />{item.type === "debt" ? "Payment" : "Received"}
           </button>
           <button onClick={() => setKind("charge")} className={`py-2.5 rounded-xl text-sm font-medium font-display transition-all ${kind === "charge" ? "" : "text-[var(--text-muted)]"}`}
-            style={{ background: kind === "charge" ? "var(--amber-dim)" : "transparent", color: kind === "charge" ? "var(--amber)" : undefined, border: kind === "charge" ? "1px solid #5c451a" : "1px solid transparent" }}>
+            style={{ background: kind === "charge" ? "var(--amber-dim)" : "transparent", color: kind === "charge" ? "var(--amber)" : undefined, border: kind === "charge" ? "1px solid #E4C57C" : "1px solid transparent" }}>
             <Icon name="plus-circle" size={14} className="inline mr-1.5 -mt-0.5" />{item.type === "debt" ? "New charge" : "Lend more"}
           </button>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Amount</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Amount</label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">{currentCurrencySymbol()}</span>
               <input autoFocus type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)}
@@ -1424,17 +1544,17 @@ function TransactionModal({ item, onClose, onApply }) {
             </div>
           </div>
           <div>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Date</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
           </div>
           <div>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Note (optional)</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Note (optional)</label>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. paid via bank transfer"
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
           </div>
           <div>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Receipt (optional)</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Receipt (optional)</label>
             {receipt ? (
               <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)]">
                 <span className="flex items-center gap-2 text-[13px] truncate min-w-0">
@@ -1456,7 +1576,7 @@ function TransactionModal({ item, onClose, onApply }) {
         </div>
         <button onClick={() => valid && onApply({ kind, amount: Number(amount), date, note, receipt })} disabled={!valid}
           className="w-full mt-6 h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring"
-          style={{ background: kind === "payment" ? "var(--emerald)" : "var(--amber)", color: "#06231a" }}>
+          style={{ background: kind === "payment" ? "var(--emerald)" : "var(--amber)", color: "#211804" }}>
           Confirm {kind === "payment" ? (item.type === "debt" ? "payment" : "receipt") : (item.type === "debt" ? "charge" : "loan")}
         </button>
       </div>
@@ -1514,8 +1634,8 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
-      <div className="modal-panel glass w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-lg sm:rounded-3xl p-6 sm:p-7 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-xl font-semibold">{isEdit ? "Edit entry" : "Add an entry"}</h2>
           <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={18} /></button>
@@ -1523,11 +1643,11 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
 
         <div className="glass rounded-2xl p-1 grid grid-cols-2 mb-5">
           <button onClick={() => setType("debt")} className="py-2.5 rounded-xl text-sm font-medium font-display transition-all"
-            style={{ background: type === "debt" ? "var(--emerald-dim)" : "transparent", color: type === "debt" ? "var(--emerald)" : "var(--text-muted)", border: type === "debt" ? "1px solid #1c4f3c" : "1px solid transparent" }}>
+            style={{ background: type === "debt" ? "var(--emerald-dim)" : "transparent", color: type === "debt" ? "var(--emerald)" : "var(--text-muted)", border: type === "debt" ? "1px solid #E4C57C" : "1px solid transparent" }}>
             <Icon name="trending-down" size={14} className="inline mr-1.5 -mt-0.5" /> I owe this
           </button>
           <button onClick={() => setType("receivable")} className="py-2.5 rounded-xl text-sm font-medium font-display transition-all"
-            style={{ background: type === "receivable" ? "var(--azure-dim)" : "transparent", color: type === "receivable" ? "var(--azure)" : "var(--text-muted)", border: type === "receivable" ? "1px solid #1c3a5c" : "1px solid transparent" }}>
+            style={{ background: type === "receivable" ? "var(--azure-dim)" : "transparent", color: type === "receivable" ? "var(--azure)" : "var(--text-muted)", border: type === "receivable" ? "1px solid #DEDBD2" : "1px solid transparent" }}>
             <Icon name="trending-up" size={14} className="inline mr-1.5 -mt-0.5" /> Owed to me
           </button>
         </div>
@@ -1535,13 +1655,13 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
         <div className="flex items-center gap-4 mb-5">
           <div className="relative">
             <Avatar image={contactImage} name={contact || name} size={56} />
-            <button onClick={() => fileRef.current?.click()} className="icon-btn absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[var(--emerald)] text-[#06231a] flex items-center justify-center border-2 border-[var(--bg-base)]" aria-label="Upload photo">
+            <button onClick={() => fileRef.current?.click()} className="icon-btn absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[var(--emerald)] text-[#211804] flex items-center justify-center border-2 border-[var(--bg-base)]" aria-label="Upload photo">
               <Icon name="camera" size={13} />
             </button>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
           </div>
           <div className="flex-1">
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Contact / person</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Contact / person</label>
             <input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="e.g. John Kamau"
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-2.5 text-sm focus-ring focus:border-[var(--emerald)]" />
           </div>
@@ -1549,14 +1669,14 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
 
         <div className="space-y-4">
           <div>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Debt name" : "What's it for"}</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">{type === "debt" ? "Debt name" : "What's it for"}</label>
             <input autoFocus type="text" value={name} onChange={(e) => setName(e.target.value)}
               placeholder={type === "debt" ? "e.g. Visa Signature Card" : "e.g. Loan for car repair"}
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Current balance" : "Amount owed to you"}</label>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">{type === "debt" ? "Current balance" : "Amount owed to you"}</label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">{currentCurrencySymbol()}</span>
                 <input type="number" min="0" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="4,500"
@@ -1564,7 +1684,7 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
               </div>
             </div>
             <div>
-              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Interest rate</label>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Interest rate</label>
               <div className="relative">
                 <input type="number" min="0" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="0"
                   className="num-input w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-3 pr-8 py-3 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
@@ -1574,7 +1694,7 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">{type === "debt" ? "Min. monthly payment" : "Expected monthly amount"}</label>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">{type === "debt" ? "Min. monthly payment" : "Expected monthly amount"}</label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] font-mono text-sm">{currentCurrencySymbol()}</span>
                 <input type="number" min="0" value={minPayment} onChange={(e) => setMinPayment(e.target.value)} placeholder="0"
@@ -1582,18 +1702,18 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
               </div>
             </div>
             <div>
-              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Due date</label>
+              <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Due date</label>
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
                 className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-3 py-3 text-sm focus-ring focus:border-[var(--emerald)]" />
             </div>
           </div>
           <div>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Remind me this many days before due date</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Remind me this many days before due date</label>
             <input type="number" min="0" value={reminderDays} onChange={(e) => setReminderDays(e.target.value)}
               className="num-input w-28 bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-3 py-2.5 font-mono text-sm focus-ring focus:border-[var(--emerald)]" />
           </div>
           <div>
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Notes</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Notes</label>
             <textarea rows="2" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything worth remembering…"
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm focus-ring focus:border-[var(--emerald)] resize-none" />
           </div>
@@ -1602,20 +1722,20 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
         {isEdit && (
           <>
             <div className="flex gap-2 mt-5">
-              <button onClick={() => setShowTxn(true)} className="flex-1 h-11 rounded-xl text-sm font-display font-semibold flex items-center justify-center gap-1.5 focus-ring"
+              <button onClick={() => setShowTxn(true)} className="flex-1 h-11 rounded-xl text-sm font-display font-semibold flex items-center justify-center gap-2 focus-ring"
                 style={{ background: "var(--surface)", border: "1px solid var(--border-soft)" }}>
                 <Icon name="banknote" size={15} /> Log payment / charge
               </button>
               {initial.status === "active" && (
-                <button onClick={() => onSettle(initial.id)} className="h-11 px-3.5 rounded-xl text-sm font-display font-semibold flex items-center justify-center gap-1.5 focus-ring"
-                  style={{ background: "var(--emerald-dim)", border: "1px solid #1c4f3c", color: "var(--emerald)" }} title="Mark as fully settled">
+                <button onClick={() => onSettle(initial.id)} className="h-11 px-3.5 rounded-xl text-sm font-display font-semibold flex items-center justify-center gap-2 focus-ring"
+                  style={{ background: "var(--emerald-dim)", border: "1px solid #E4C57C", color: "var(--emerald)" }} title="Mark as fully settled">
                   <Icon name="badge-check" size={15} />
                 </button>
               )}
             </div>
             {initial.history && initial.history.length > 0 && (
               <div className="mt-4">
-                <button onClick={() => setShowHistory((s) => !s)} className="flex items-center gap-1.5 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                <button onClick={() => setShowHistory((s) => !s)} className="flex items-center gap-2 text-[12px] text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                   <Icon name={showHistory ? "chevron-down" : "chevron-right"} size={13} /> {initial.history.length} past transaction{initial.history.length === 1 ? "" : "s"}
                 </button>
                 {showHistory && (
@@ -1623,7 +1743,7 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
                     {[...initial.history].reverse().map((t) => (
                       <div key={t.id} className="flex items-center justify-between text-[12px] px-3 py-2 rounded-lg bg-[var(--surface)]">
                         <span className="text-[var(--text-muted)] truncate min-w-0 flex-1">{fmtDate(t.date)} {t.note ? `· ${t.note}` : ""}</span>
-                        <span className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <span className="flex items-center gap-2 shrink-0 ml-2">
                           <ReceiptBadge receipt={t.receipt} />
                           <span className="font-mono font-medium" style={{ color: t.kind === "payment" ? "var(--emerald)" : "var(--amber)" }}>
                             {t.kind === "payment" ? "−" : "+"}{fmtMoney2(t.amount)}
@@ -1640,12 +1760,12 @@ function ItemModal({ initial, defaultType, onClose, onSave, onDelete, onSettle, 
 
         <div className="flex gap-3 mt-6">
           {isEdit && (
-            <button onClick={() => onDelete(initial.id)} className="icon-btn h-12 w-12 rounded-2xl flex items-center justify-center text-[var(--danger)] border border-[#4a1f2b] hover:bg-[#2a1218] focus-ring" aria-label="Delete entry">
+            <button onClick={() => onDelete(initial.id)} className="icon-btn h-12 w-12 rounded-2xl flex items-center justify-center text-[var(--danger)] border border-[#E8BFB8] hover:bg-[#2a1218] focus-ring" aria-label="Delete entry">
               <Icon name="trash-2" size={18} />
             </button>
           )}
           <button onClick={submit} disabled={!valid} className="flex-1 h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring"
-            style={{ background: "var(--emerald)", color: "#06231a" }}>
+            style={{ background: "var(--emerald)", color: "#211804" }}>
             {isEdit ? "Save changes" : "Add entry"}
           </button>
         </div>
@@ -1663,19 +1783,19 @@ function StrategyToggle({ strategy, setStrategy }) {
       <div className="grid grid-cols-2 relative">
         <div className="absolute top-0 bottom-0 w-1/2 rounded-2xl transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
           style={{
-            background: strategy === "snowball" ? "linear-gradient(135deg,#0f3d30,#0a2b22)" : "linear-gradient(135deg,#0f2c47,#0a2036)",
-            border: `1px solid ${strategy === "snowball" ? "#1c4f3c" : "#1c3a5c"}`,
+            background: strategy === "snowball" ? "linear-gradient(135deg,#FBF3E0,#F6E8C8)" : "linear-gradient(135deg,#F5F3EC,#EFEDE5)",
+            border: `1px solid ${strategy === "snowball" ? "#E4C57C" : "#DEDBD2"}`,
             transform: strategy === "snowball" ? "translateX(0%)" : "translateX(100%)",
           }}></div>
         <Tooltip label="Prioritizes paying off your smallest balances first for quick psychological wins." position="bottom" className="w-full">
-          <button onClick={() => setStrategy("snowball")} className="segbtn relative z-10 py-4 flex flex-col items-center gap-1.5 focus-ring rounded-2xl w-full"
+          <button onClick={() => setStrategy("snowball")} className="segbtn relative z-10 py-4 flex flex-col items-center gap-2 focus-ring rounded-2xl w-full"
             style={{ color: strategy === "snowball" ? "var(--emerald)" : "var(--text-muted)" }}>
             <Icon name="snowflake" size={20} /><span className="font-display font-semibold text-sm">Snowball</span>
             <span className="text-[11px] text-[var(--text-dim)]">Smallest balance first</span>
           </button>
         </Tooltip>
         <Tooltip label="Prioritizes paying off your highest interest rates first to save the most money." position="bottom" className="w-full">
-          <button onClick={() => setStrategy("avalanche")} className="segbtn relative z-10 py-4 flex flex-col items-center gap-1.5 focus-ring rounded-2xl w-full"
+          <button onClick={() => setStrategy("avalanche")} className="segbtn relative z-10 py-4 flex flex-col items-center gap-2 focus-ring rounded-2xl w-full"
             style={{ color: strategy === "avalanche" ? "var(--azure)" : "var(--text-muted)" }}>
             <Icon name="mountain-snow" size={20} /><span className="font-display font-semibold text-sm">Avalanche</span>
             <span className="text-[11px] text-[var(--text-dim)]">Highest interest first</span>
@@ -1719,7 +1839,7 @@ function DebtSnake({ items, sim, strategy }) {
   if (orderedDebts.length === 0) {
     return <EmptyState icon="party-popper" title="Nothing to pay off" sub="Add a debt you owe to see your payoff timeline come to life." />;
   }
-  const palette = ["#34d399", "#3b9eff", "#fbbf24", "#fb7185", "#a78bfa", "#f472b6", "#22d3ee", "#f97316"];
+  const palette = ["#B8790A", "#C68F2E", "#14120D", "#8A5C08", "#D4A552", "#726F66", "#E2BB76", "#4A3506"];
   return (
     <div className="glass rounded-3xl p-5 sm:p-7">
       <div className="flex items-center justify-between mb-1">
@@ -1736,14 +1856,14 @@ function DebtSnake({ items, sim, strategy }) {
           const color = palette[i % palette.length];
           return (
             <div key={d.id} className="anim-in" style={{ animationDelay: `${i * 70}ms` }}>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold shrink-0" style={{ background: color + "22", color, border: `1px solid ${color}55` }}>{i + 1}</span>
                   <span className="font-medium text-sm truncate">{d.name}</span>
                 </div>
                 <span className="text-[11px] font-mono text-[var(--text-dim)] shrink-0 ml-2">{monthsFromNowLabel(payoff)}</span>
               </div>
-              <div className="h-3 rounded-full bg-[#111726] relative overflow-hidden">
+              <div className="h-3 rounded-full bg-[#EEEBE3] relative overflow-hidden">
                 <div className="gantt-bar h-full rounded-full relative" style={{ width: `${widthPct}%`, background: `linear-gradient(90deg, ${color}55, ${color})` }}>
                   <span className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full pulse-dot" style={{ background: color, "--ring-color": color + "8c", "--ring-color-transparent": color + "00" }}></span>
                 </div>
@@ -1808,19 +1928,21 @@ function ContactsView({ items, onOpenItem }) {
                 </Tooltip>
               </div>
               <div className="flex gap-2 mt-3 text-[12px]">
-                <span className="px-2 py-1 rounded-lg bg-[var(--azure-dim)] text-[var(--azure)] border border-[#1c3a5c]">Owes you {fmtMoney(c.receivableTotal)}</span>
-                <span className="px-2 py-1 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)] border border-[#5c451a]">You owe {fmtMoney(c.debtTotal)}</span>
+                <span className="px-2 py-1 rounded-lg bg-[var(--azure-dim)] text-[var(--azure)] border border-[#DEDBD2]">Owes you {fmtMoney(c.receivableTotal)}</span>
+                <span className="px-2 py-1 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)] border border-[#E4C57C]">You owe {fmtMoney(c.debtTotal)}</span>
               </div>
-              {isOpen && (
-                <div className="mt-3 pt-3 border-t border-[var(--border-soft)] space-y-2">
-                  {c.items.map((it) => (
-                    <div key={it.id} onClick={() => onOpenItem(it)} className="flex items-center justify-between text-[13px] px-2 py-1.5 rounded-lg hover:bg-[var(--surface-hover)] cursor-pointer">
-                      <span className="truncate min-w-0 flex-1">{it.name} {it.status === "settled" && <span className="text-[var(--text-dim)]">(settled)</span>}</span>
-                      <span className="font-mono" style={{ color: it.type === "debt" ? "var(--amber)" : "var(--azure)" }}>{fmtMoney(it.balance)}</span>
-                    </div>
-                  ))}
+              <div className={`collapse-grid ${isOpen ? "open" : ""}`}>
+                <div className="collapse-inner">
+                  <div className="mt-3 pt-3 border-t border-[var(--border-soft)] space-y-2">
+                    {c.items.map((it) => (
+                      <div key={it.id} onClick={() => onOpenItem(it)} className="flex items-center justify-between text-[13px] px-2 py-1.5 rounded-lg hover:bg-[var(--surface-hover)] cursor-pointer">
+                        <span className="truncate min-w-0 flex-1">{it.name} {it.status === "settled" && <span className="text-[var(--text-dim)]">(settled)</span>}</span>
+                        <span className="font-mono" style={{ color: it.type === "debt" ? "var(--amber)" : "var(--azure)" }}>{fmtMoney(it.balance)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
@@ -1935,12 +2057,12 @@ function StatisticsView({ items, sim, extraBudget, strategy }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard icon="trending-down" label="You owe" value={fmtMoney(totalDebt)} sub={`${activeDebts.length} active`} accent="amber" delay={0} tip="Sum of all balances across your active debts." />
-        <MetricCard icon="trending-up" label="Owed to you" value={fmtMoney(totalReceivable)} sub={`${activeReceivables.length} active`} accent="azure" delay={40} tip="Sum of all balances people still owe you." />
-        <MetricCard icon="wallet" label="Net position" value={`${net >= 0 ? "+" : ""}${fmtMoney(net)}`} sub={net >= 0 ? "You're net positive" : "You're net negative"} accent={net >= 0 ? "emerald" : "amber"} delay={80} tip="What you'd have left if everyone paid you back and you paid everyone off." />
-        <MetricCard icon="banknote" label="Interest to be paid" value={fmtMoney(sim.totalInterest)} sub={`${strategy === "snowball" ? "Snowball" : "Avalanche"} plan`} accent="violet" delay={120} tip="Total interest you'll pay over the life of your current payoff plan." />
-        <MetricCard icon="badge-check" label="Total paid historically" value={fmtMoney(totalPaidOut)} sub="Across all your debts" accent="emerald" delay={160} tip="Every payment you've ever logged toward your own debts." />
-        <MetricCard icon="archive" label="Total received historically" value={fmtMoney(totalReceived)} sub="From people who owed you" accent="azure" delay={200} tip="Every payment you've received from people who owed you money." />
+        <MetricCard icon="trending-down" label="You owe" animateValue={totalDebt} sub={`${activeDebts.length} active`} accent="amber" delay={0} tip="Sum of all balances across your active debts." />
+        <MetricCard icon="trending-up" label="Owed to you" animateValue={totalReceivable} sub={`${activeReceivables.length} active`} accent="azure" delay={40} tip="Sum of all balances people still owe you." />
+        <MetricCard icon="wallet" label="Net position" animateValue={net} signed sub={net >= 0 ? "You're net positive" : "You're net negative"} accent={net >= 0 ? "emerald" : "amber"} delay={80} tip="What you'd have left if everyone paid you back and you paid everyone off." />
+        <MetricCard icon="banknote" label="Interest to be paid" animateValue={sim.totalInterest} sub={`${strategy === "snowball" ? "Snowball" : "Avalanche"} plan`} accent="violet" delay={120} tip="Total interest you'll pay over the life of your current payoff plan." />
+        <MetricCard icon="badge-check" label="Total paid historically" animateValue={totalPaidOut} sub="Across all your debts" accent="emerald" delay={160} tip="Every payment you've ever logged toward your own debts." />
+        <MetricCard icon="archive" label="Total received historically" animateValue={totalReceived} sub="From people who owed you" accent="azure" delay={200} tip="Every payment you've received from people who owed you money." />
         <MetricCard icon="badge-check" label="Settled entries" value={String(settledCount)} sub="Fully paid off or repaid" accent="violet" delay={240} tip="Debts and loans you've marked as fully paid off or repaid." />
         <MetricCard icon="alarm-clock" label="Due soon" value={String(upcoming.length)} sub="Within your reminder window" accent="amber" delay={280} tip="Entries whose due date falls inside their reminder window." />
       </div>
@@ -1959,8 +2081,8 @@ function StatisticsView({ items, sim, extraBudget, strategy }) {
                   <span className="truncate min-w-0 flex-1 font-medium">{it.name}{it.contact ? ` · ${it.contact}` : ""}</span>
                   <span className="font-mono text-[var(--text-muted)] shrink-0 ml-2">{fmtMoney(it.balance)}</span>
                 </div>
-                <div className="h-2.5 rounded-full bg-[#111726] overflow-hidden">
-                  <div className="progress-bar-fill h-full rounded-full" style={{ width: `${(it.balance / maxTop) * 100}%`, background: it.type === "debt" ? "linear-gradient(90deg,#fbbf2488,#fbbf24)" : "linear-gradient(90deg,#3b9eff88,#3b9eff)" }}></div>
+                <div className="h-2.5 rounded-full bg-[#EEEBE3] overflow-hidden">
+                  <div className="progress-bar-fill h-full rounded-full" style={{ width: `${(it.balance / maxTop) * 100}%`, background: it.type === "debt" ? "linear-gradient(90deg,#B8790A88,#B8790A)" : "linear-gradient(90deg,#14120D66,#14120D)" }}></div>
                 </div>
               </div>
             ))}
@@ -2012,8 +2134,8 @@ function ChangeCredentialModal({ onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={() => onClose(false)}>
-      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.7)" }} onClick={() => onClose(false)}>
+      <div className="modal-panel glass w-full sm:max-w-sm sm:rounded-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display text-lg font-semibold">
             {step === "current" ? "Confirm it's you" : step === "new" ? "Choose a new PIN" : "Confirm your new PIN"}
@@ -2031,7 +2153,7 @@ function ChangeCredentialModal({ onClose, onSubmit }) {
               placeholder="Current PIN" />
             {error && <p className="text-[var(--danger)] text-xs font-medium">{error}</p>}
             <button onClick={handleCurrentContinue} disabled={!currentValid}
-              className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+              className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
               Continue
             </button>
           </div>
@@ -2045,7 +2167,7 @@ function ChangeCredentialModal({ onClose, onSubmit }) {
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-3 text-sm font-mono tracking-widest text-center focus-ring focus:border-[var(--emerald)]"
               placeholder="New 4–6 digit PIN" />
             <button onClick={handleNewContinue} disabled={!newValid}
-              className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+              className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
               Continue
             </button>
           </div>
@@ -2061,7 +2183,7 @@ function ChangeCredentialModal({ onClose, onSubmit }) {
               placeholder="Confirm PIN" />
             {error && <p className="text-[var(--danger)] text-xs font-medium">{error}</p>}
             <button onClick={handleFinalSubmit} disabled={busy || confirmVal.length < 4}
-              className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+              className="w-full h-12 rounded-2xl font-display font-semibold text-[15px] disabled:opacity-30 focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
               {busy ? "Saving…" : "Save new PIN"}
             </button>
           </div>
@@ -2113,16 +2235,16 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
         <div className="flex items-center gap-4 mb-5">
           <Avatar image={null} name={name || "?"} size={52} />
           <div className="flex-1">
-            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Display name</label>
+            <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Display name</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Amara"
               className="w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl px-4 py-2.5 text-sm focus-ring focus:border-[var(--emerald)]" />
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={saveProfile} className="h-10 px-4 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+          <button onClick={saveProfile} className="h-10 px-4 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
             Save profile
           </button>
-          {savedPulse && <span className="text-[12px] text-[var(--emerald)] flex items-center gap-1.5 anim-in"><Icon name="check-circle" size={14} /> Saved</span>}
+          {savedPulse && <span className="text-[12px] text-[var(--emerald)] flex items-center gap-2 anim-in"><Icon name="check-circle" size={14} /> Saved</span>}
         </div>
         <p className="text-[11px] text-[var(--text-dim)] mt-3">Just a local label for you — stored encrypted, never sent anywhere.</p>
       </div>
@@ -2133,7 +2255,7 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
           <Icon name="banknote" size={17} className="text-[var(--amber)]" />
           <h3 className="font-display font-semibold text-lg">Currency</h3>
         </div>
-        <label className="text-[12px] text-[var(--text-muted)] font-medium mb-1.5 block">Display all amounts in</label>
+        <label className="text-[12px] text-[var(--text-muted)] font-medium mb-2 block">Display all amounts in</label>
         <div className="relative">
           <select value={currency} onChange={(e) => changeCurrency(e.target.value)}
             className="styled-select w-full bg-[var(--surface)] border border-[var(--border-soft)] rounded-xl pl-4 pr-9 py-3 text-sm focus-ring focus:border-[var(--emerald)] cursor-pointer appearance-none">
@@ -2156,7 +2278,7 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
         </div>
 
         <div className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)] mb-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <Icon name="lock" size={16} className="text-[var(--text-muted)]" />
             <div>
               <div className="text-sm font-medium">PIN</div>
@@ -2169,7 +2291,7 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
         </div>
 
         <div className="flex items-center justify-between px-4 py-3.5 rounded-xl bg-[var(--surface)] border border-[var(--border-soft)]">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <Icon name="alarm-clock" size={16} className="text-[var(--text-muted)]" />
             <div>
               <div className="text-sm font-medium">Two-factor authentication</div>
@@ -2177,7 +2299,7 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
             </div>
           </div>
           {data.security?.totpEnabled ? (
-            <button onClick={toggleTotp} className="h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold text-[var(--danger)] focus-ring" style={{ background: "var(--danger-dim)", border: "1px solid #4a1f2b" }}>
+            <button onClick={toggleTotp} className="h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold text-[var(--danger)] focus-ring" style={{ background: "var(--danger-dim)", border: "1px solid #E8BFB8" }}>
               Disable
             </button>
           ) : (
@@ -2185,7 +2307,7 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
           )}
         </div>
 
-        {successMsg && <p className="text-[12px] text-[var(--emerald)] mt-3 flex items-center gap-1.5 anim-in"><Icon name="check-circle" size={14} /> {successMsg}</p>}
+        {successMsg && <p className="text-[12px] text-[var(--emerald)] mt-3 flex items-center gap-2 anim-in"><Icon name="check-circle" size={14} /> {successMsg}</p>}
       </div>
 
       {/* Privacy reminder */}
@@ -2202,7 +2324,7 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
       <BYOSSection data={data} saveData={saveData} />
 
       {/* Danger zone */}
-      <div className="glass rounded-3xl p-5 sm:p-6" style={{ borderColor: "#4a1f2b" }}>
+      <div className="glass rounded-3xl p-5 sm:p-6" style={{ borderColor: "#E8BFB8" }}>
         <div className="flex items-center gap-2 mb-2">
           <Icon name="triangle-alert" size={15} className="text-[var(--danger)]" />
           <span className="text-[12px] uppercase tracking-widest text-[var(--danger)] font-medium">Danger zone</span>
@@ -2210,7 +2332,7 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
         <p className="text-[12px] text-[var(--text-muted)] leading-relaxed mb-4">
           Lost both your PIN and backup code? There's no way to decrypt your data without one of them — but you can wipe this device's Ledger data and start completely fresh.
         </p>
-        <button onClick={onFactoryReset} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-display font-semibold text-[var(--danger)] focus-ring" style={{ background: "var(--danger-dim)", border: "1px solid #4a1f2b" }}>
+        <button onClick={onFactoryReset} className="inline-flex items-center gap-2 h-10 px-4 rounded-xl text-[13px] font-display font-semibold text-[var(--danger)] focus-ring" style={{ background: "var(--danger-dim)", border: "1px solid #E8BFB8" }}>
           <Icon name="refresh-cw" size={14} /> Factory reset
         </button>
       </div>
@@ -2379,8 +2501,8 @@ function DataPanel({ items, onClose, onImport }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
-      <div className="modal-panel glass w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(4,6,10,0.7)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-lg sm:rounded-3xl p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display text-xl font-semibold">Import, export &amp; backup</h2>
           <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={18} /></button>
@@ -2390,7 +2512,7 @@ function DataPanel({ items, onClose, onImport }) {
           <>
             <h3 className="text-[12px] uppercase tracking-widest text-[var(--text-dim)] font-medium mb-2">Import from a spreadsheet</h3>
             <Tooltip label="Get a ready-made .xlsx with the right columns and two example rows." position="bottom" className="w-full">
-              <button onClick={downloadTemplate} className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-3 focus-ring" style={{ background: "var(--azure-dim)", border: "1px solid #1c3a5c" }}>
+              <button onClick={downloadTemplate} className="w-full flex items-center justify-between px-4 py-3 rounded-xl mb-3 focus-ring" style={{ background: "var(--azure-dim)", border: "1px solid #DEDBD2" }}>
                 <span className="flex items-center gap-2 text-sm font-medium text-[var(--azure)]"><Icon name="download" size={15} /> Download blank Excel template</span>
                 <Icon name="chevron-right" size={15} className="text-[var(--azure)]" />
               </button>
@@ -2412,8 +2534,8 @@ function DataPanel({ items, onClose, onImport }) {
             </div>
 
             <h3 className="text-[12px] uppercase tracking-widest text-[var(--text-dim)] font-medium mb-2 mt-7">Export your data</h3>
-            <div className="grid grid-cols-1 gap-2.5">
-              <button onClick={exportEverything} className="flex items-center justify-between px-4 py-3 rounded-xl focus-ring" style={{ background: "var(--emerald-dim)", border: "1px solid #1c4f3c" }}>
+            <div className="grid grid-cols-1 gap-2">
+              <button onClick={exportEverything} className="flex items-center justify-between px-4 py-3 rounded-xl focus-ring" style={{ background: "var(--emerald-dim)", border: "1px solid #E4C57C" }}>
                 <span className="flex items-center gap-2 text-sm font-medium text-[var(--emerald)]"><Icon name="download" size={16} /> Export everything (JSON + 2 CSVs)</span>
                 <Icon name="chevron-right" size={15} className="text-[var(--emerald)]" />
               </button>
@@ -2449,7 +2571,7 @@ function DataPanel({ items, onClose, onImport }) {
             <div className="flex gap-3">
               <button onClick={() => setImportPreview(null)} className="flex-1 h-11 rounded-xl text-sm font-medium bg-[var(--surface)] border border-[var(--border-soft)] focus-ring">Cancel</button>
               <button onClick={() => { onImport(importPreview.rows); setImportPreview(null); onClose(); }}
-                className="flex-1 h-11 rounded-xl text-sm font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+                className="flex-1 h-11 rounded-xl text-sm font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
                 Import {importPreview.rows.length} entries
               </button>
             </div>
@@ -2461,6 +2583,38 @@ function DataPanel({ items, onClose, onImport }) {
 }
 
 /* ============================= DASHBOARD ============================= */
+/* Celebrates paying off a debt. The state to trigger this (celebrating,
+   celebrationKey) already existed on Dashboard — this is the actual burst it
+   was meant to show. */
+function ConfettiBurst() {
+  const pieces = useMemo(() => {
+    const colors = ["#34d399", "#3b9eff", "#fbbf24", "#fb7185", "#a78bfa", "#f472b6"];
+    return Array.from({ length: 40 }).map((_, i) => {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 100 + Math.random() * 220;
+      return {
+        id: i,
+        color: colors[i % colors.length],
+        tx: `${Math.cos(angle) * dist}px`,
+        ty: `${Math.sin(angle) * dist - 40}px`,
+        rot: `${(Math.random() - 0.5) * 720}deg`,
+        delay: `${Math.random() * 100}ms`,
+        left: `${42 + Math.random() * 16}%`,
+        top: `${30 + Math.random() * 16}%`,
+        round: i % 3 === 0,
+      };
+    });
+  }, []);
+  return (
+    <div className="fixed inset-0 z-[100] pointer-events-none overflow-hidden">
+      {pieces.map((p) => (
+        <span key={p.id} className={`confetti-piece ${p.round ? "confetti-round" : ""}`}
+          style={{ left: p.left, top: p.top, background: p.color, "--tx": p.tx, "--ty": p.ty, "--rot": p.rot, animationDelay: p.delay }}></span>
+      ))}
+    </div>
+  );
+}
+
 function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset }) {
   const { items, extraBudget, strategy } = data;
   // Keep the shared money formatter in sync with this account's chosen currency.
@@ -2470,6 +2624,28 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
   const [modalItem, setModalItem] = useState(null); // null closed, {} new, {...} edit
   const [modalDefaultType, setModalDefaultType] = useState("debt");
   const [showDataPanel, setShowDataPanel] = useState(false);
+  const navRef = useRef(null);
+  const tabBtnRefs = useRef({});
+  const [tabIndicator, setTabIndicator] = useState({ left: 0, width: 0, ready: false });
+  const [celebrationKey, setCelebrationKey] = useState(0);
+  const [celebrating, setCelebrating] = useState(false);
+  const triggerCelebration = () => {
+    setCelebrationKey((k) => k + 1);
+    setCelebrating(true);
+    setTimeout(() => setCelebrating(false), 1400);
+  };
+
+  useEffect(() => {
+    const recompute = () => {
+      const btn = tabBtnRefs.current[tab];
+      const nav = navRef.current;
+      if (!btn || !nav) return;
+      setTabIndicator({ left: btn.offsetLeft, width: btn.offsetWidth, ready: true });
+    };
+    recompute();
+    window.addEventListener("resize", recompute);
+    return () => window.removeEventListener("resize", recompute);
+  }, [tab, data.items?.length]);
 
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("dateAdded");
@@ -2489,8 +2665,8 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
   const totalReceivable = receivables.filter((d) => d.status === "active").reduce((s, d) => s + d.balance, 0);
 
   const strategyColor = strategy === "snowball"
-    ? { text: "var(--emerald)", dim: "var(--emerald-dim)", border: "#1c4f3c" }
-    : { text: "var(--azure)", dim: "var(--azure-dim)", border: "#1c3a5c" };
+    ? { text: "var(--emerald)", dim: "var(--emerald-dim)", border: "#E4C57C" }
+    : { text: "var(--azure)", dim: "var(--azure-dim)", border: "#DEDBD2" };
 
   const oweFiltered = useMemo(() => filterSortItems(debts, { query, sortBy, sortDir, statusFilter }), [debts, query, sortBy, sortDir, statusFilter]);
   const owedFiltered = useMemo(() => filterSortItems(receivables, { query, sortBy, sortDir, statusFilter }), [receivables, query, sortBy, sortDir, statusFilter]);
@@ -2510,8 +2686,10 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
   const handleSettleItem = (id) => {
     setItems((prev) => prev.map((d) => d.id === id ? { ...d, status: "settled", balance: 0, settledAt: new Date().toISOString() } : d));
     setModalItem(null);
+    triggerCelebration();
   };
   const handleTransact = (id, { kind, amount, date, note, receipt }) => {
+    let becameSettled = false;
     setItems((prev) => prev.map((d) => {
       if (d.id !== id) return d;
       let balance = d.balance;
@@ -2520,6 +2698,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
       else { balance += amount; originalAmount = Math.max(originalAmount, balance); }
       const txn = { id: uid("txn"), kind, amount, date, note, receipt: receipt || null };
       const settled = balance <= 0.005 && kind === "payment";
+      if (settled && d.status !== "settled") becameSettled = true;
       return {
         ...d, balance, originalAmount,
         status: settled ? "settled" : d.status,
@@ -2527,6 +2706,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
         history: [...(d.history || []), txn],
       };
     }));
+    if (becameSettled) triggerCelebration();
   };
   const handleImportRows = (rows) => setItems((prev) => [...prev, ...rows]);
 
@@ -2541,21 +2721,27 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
   ];
 
   return (
-    <div className="min-h-screen pb-16">
-      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-[var(--border-soft)]" style={{ background: "rgba(8,11,17,0.75)" }}>
+    <div className="min-h-screen pb-16 relative z-10">
+      <DashboardBackground />
+      {celebrating && <ConfettiBurst key={celebrationKey} />}
+      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-[var(--border-soft)]" style={{ background: "rgba(250,249,246,0.82)" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-[var(--emerald-dim)] border border-[#1c4f3c] flex items-center justify-center">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-[var(--emerald-dim)] border border-[#E4C57C] flex items-center justify-center">
               <Icon name="landmark" size={16} className="text-[var(--emerald)]" />
             </div>
             <span className="font-display font-semibold text-[17px] tracking-tight hidden sm:inline">Ledger</span>
           </div>
-          <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          <nav ref={navRef} className="relative flex items-center gap-1 overflow-x-auto no-scrollbar">
+            <div
+              className="absolute top-0 bottom-0 rounded-xl bg-[var(--surface-hover)] transition-all duration-300 ease-out"
+              style={{ left: tabIndicator.left, width: tabIndicator.width, opacity: tabIndicator.ready ? 1 : 0, zIndex: 0 }}
+            ></div>
             {TABS.map((t) => (
               <Tooltip key={t.id} label={t.tip} position="bottom">
-                <button onClick={() => setTab(t.id)}
-                  className="tab-btn flex items-center gap-1.5 h-9 px-3 rounded-xl text-[13px] font-medium whitespace-nowrap focus-ring"
-                  style={{ background: tab === t.id ? "var(--surface-hover)" : "transparent", color: tab === t.id ? "var(--text-primary)" : "var(--text-muted)" }}>
+                <button ref={(el) => { tabBtnRefs.current[t.id] = el; }} onClick={() => setTab(t.id)}
+                  className="tab-btn relative flex items-center gap-2 h-9 px-3 rounded-xl text-[13px] font-medium whitespace-nowrap focus-ring"
+                  style={{ color: tab === t.id ? "var(--text-primary)" : "var(--text-muted)", zIndex: 1 }}>
                   <Icon name={t.icon} size={14} /> <span className="hidden md:inline">{t.label}</span>
                 </button>
               </Tooltip>
@@ -2576,17 +2762,17 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+      <main key={tab} className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 anim-in">
         {tab === "overview" && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <MetricCard icon="wallet" label="Total remaining" value={fmtMoney(totalBalance)} sub={`${debts.filter(d=>d.status==='active').length} active debt${debts.filter(d=>d.status==='active').length===1?"":"s"}`} accent="emerald" delay={0} tip="The combined balance of every active debt you're currently paying down." />
-              <MetricCard icon="trending-down" label="Interest to be paid" value={fmtMoney(sim.totalInterest)} sub={strategy === "avalanche" ? "Minimized via Avalanche" : "Snowball order applied"} accent="amber" delay={60} tip="Total interest you'll pay over the life of your plan at this strategy." />
+              <MetricCard icon="wallet" label="Total remaining" animateValue={totalBalance} sub={`${debts.filter(d=>d.status==='active').length} active debt${debts.filter(d=>d.status==='active').length===1?"":"s"}`} accent="emerald" delay={0} tip="The combined balance of every active debt you're currently paying down." />
+              <MetricCard icon="trending-down" label="Interest to be paid" animateValue={sim.totalInterest} sub={strategy === "avalanche" ? "Minimized via Avalanche" : "Snowball order applied"} accent="amber" delay={60} tip="Total interest you'll pay over the life of your plan at this strategy." />
               <MetricCard icon="calendar-check" label="Freedom date" value={debts.filter(d=>d.status==='active').length ? monthsFromNowLabel(sim.months) : "—"} sub={debts.filter(d=>d.status==='active').length ? `${sim.months} month${sim.months === 1 ? "" : "s"} from now` : "Add debts to begin"} accent="azure" delay={120} tip="Projected month you'll be completely debt-free at your current extra budget." />
             </div>
 
             {sim.insufficient && (
-              <div className="glass rounded-2xl p-4 mb-6 flex items-center gap-3 border-[#5c451a] anim-in">
+              <div className="glass rounded-2xl p-4 mb-6 flex items-center gap-3 border-[#E4C57C] anim-in">
                 <Icon name="triangle-alert" size={18} className="text-[var(--amber)] shrink-0" />
                 <p className="text-[13px] text-[var(--text-muted)]">At this payment level your payoff stretches past 60 years. Increase your extra monthly budget to see a realistic freedom date.</p>
               </div>
@@ -2597,9 +2783,9 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-display font-semibold text-lg">Your debts (payoff order)</h2>
                   <Tooltip label="Add a new card, loan, or line of credit you owe." position="bottom">
-                    <button onClick={() => openNew("debt")} className="icon-btn inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+                    <RippleButton onClick={() => openNew("debt")} className="icon-btn inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
                       <Icon name="plus" size={15} /> Add debt
-                    </button>
+                    </RippleButton>
                   </Tooltip>
                 </div>
                 {debts.filter((d) => d.status === "active").length === 0 ? (
@@ -2624,7 +2810,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
                   </div>
                   <div className="font-mono text-2xl font-semibold mb-3">{fmtMoney(totalReceivable)}</div>
                   <Tooltip label="Track money you've lent to someone else." position="bottom" className="w-full">
-                    <button onClick={() => openNew("receivable")} className="w-full h-10 rounded-xl text-[13px] font-display font-semibold flex items-center justify-center gap-1.5 focus-ring" style={{ background: "var(--azure-dim)", border: "1px solid #1c3a5c", color: "var(--azure)" }}>
+                    <button onClick={() => openNew("receivable")} className="w-full h-10 rounded-xl text-[13px] font-display font-semibold flex items-center justify-center gap-2 focus-ring" style={{ background: "var(--azure-dim)", border: "1px solid #DEDBD2", color: "var(--azure)" }}>
                       <Icon name="plus" size={14} /> Add who owes you
                     </button>
                   </Tooltip>
@@ -2641,7 +2827,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-semibold text-lg">{tab === "owe" ? "Debts you owe" : "People who owe you"}</h2>
               <Tooltip label={tab === "owe" ? "Add a new card, loan, or line of credit you owe." : "Add a new person or loan that owes you money."} position="bottom">
-                <button onClick={() => openNew(tab === "owe" ? "debt" : "receivable")} className="icon-btn inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#06231a" }}>
+                <button onClick={() => openNew(tab === "owe" ? "debt" : "receivable")} className="icon-btn inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-[13px] font-display font-semibold focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
                   <Icon name="plus" size={15} /> Add {tab === "owe" ? "debt" : "receivable"}
                 </button>
               </Tooltip>
@@ -2652,7 +2838,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {(tab === "owe" ? oweFiltered : owedFiltered).map((d, i) => (
-                  <ItemCard key={d.id} item={d} rank={tab === "owe" ? rankMap[d.id] : null} accentColor={tab === "owe" ? strategyColor : { text: "var(--azure)", dim: "var(--azure-dim)", border: "#1c3a5c" }} onOpen={setModalItem} delay={i * 40} />
+                  <ItemCard key={d.id} item={d} rank={tab === "owe" ? rankMap[d.id] : null} accentColor={tab === "owe" ? strategyColor : { text: "var(--azure)", dim: "var(--azure-dim)", border: "#DEDBD2" }} onOpen={setModalItem} delay={i * 40} />
                 ))}
               </div>
             )}
