@@ -12,6 +12,39 @@
 <meta property="og:title" content="Ledger - Personal Debt Tracker">
 <meta property="og:description" content="An offline-first tool to manage what you owe and what you are owed.">
 <meta property="og:image" content="https://yourdomain.com/assets/app-preview.png">
+
+<!-- PWA: installable app metadata. Requires being served over HTTPS (or
+     localhost) — opened directly as a local file:// this manifest is simply
+     ignored by the browser and the app still works exactly as before, just
+     without an install prompt or offline caching. -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#B8790A">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<meta name="mobile-web-app-capable" content="yes">
+<script>
+  // Register the service worker (enables offline use + installability) and
+  // capture the browser's install prompt so the app can trigger it from a
+  // normal in-app button instead of relying on a hidden browser-menu item.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+    });
+  }
+  window.__deferredInstallPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    window.__deferredInstallPrompt = e;
+    window.dispatchEvent(new Event("pwa-installable"));
+  });
+  window.addEventListener("appinstalled", () => {
+    window.__deferredInstallPrompt = null;
+    window.dispatchEvent(new Event("pwa-installed"));
+  });
+</script>
 <script>
   // The Tailwind Play CDN and in-browser Babel transformer both print a
   // one-line "don't use this in production" notice on load. That notice is
@@ -50,9 +83,9 @@
     --surface-hover:#F3F1EA;
     --border:#E7E4DC;
     --border-soft:#EFEDE6;
-    --text-primary:#14120D;
-    --text-muted:#726F66;
-    --text-dim:#A8A499;
+    --text-primary:#241A08;
+    --text-muted:#6B5028;
+    --text-dim:#8C7247;
     --emerald:#B8790A;
     --emerald-dim:#F6EAD2;
     --azure:#14120D;
@@ -65,7 +98,44 @@
     --accent:#B8790A;
     --accent-ink:#211804;
     --accent-border:#E4C57C;
+    --glass-bg:rgba(255,255,255,0.72);
+    --glass-border:var(--border-soft);
+    --header-bg:rgba(250,249,246,0.82);
   }
+  html[data-theme="dark"]{
+    /* ===== Dark mode — same warm gold identity, inverted onto deep charcoal-brown ===== */
+    --bg-base:#1C160C;
+    --bg-vignette:linear-gradient(160deg, #14100A 0%, #1E1710 35%, #241B0D 70%, #2E2410 100%);
+    --surface:#241D12;
+    --surface-raised:#2A2214;
+    --surface-hover:#332A19;
+    --border:#3A2F1C;
+    --border-soft:#2E2617;
+    --text-primary:#F5EEDD;
+    --text-muted:#C2AC80;
+    --text-dim:#8C7C5C;
+    --emerald:#E0AC4E;
+    --emerald-dim:#3A2E13;
+    --azure:#F5EEDD;
+    --azure-dim:#332A19;
+    --amber:#E0AC4E;
+    --amber-dim:#3A2E13;
+    --danger:#E2685A;
+    --danger-dim:#3A1F1A;
+    --violet:#C2AC80;
+    --accent:#E0AC4E;
+    --accent-ink:#211804;
+    --accent-border:#5C4A24;
+    --glass-bg:rgba(36,29,18,0.7);
+    --glass-border:rgba(224,172,78,0.14);
+    --header-bg:rgba(20,16,10,0.82);
+  }
+  html[data-theme="dark"] ::-webkit-scrollbar-thumb{ background:#4A3E28; }
+  html[data-theme="dark"] .slider-track{ background:#332A19; }
+  html[data-theme="dark"] .slider-track::-webkit-slider-thumb{ border-color:#241D12; }
+  html[data-theme="dark"] .pin-dot{ border-color:#4A3E28; }
+  html[data-theme="dark"] .item-card:hover{ border-color:#5C4A24; }
+  html[data-theme="dark"] .auth-orb-2{ background:radial-gradient(circle, #E0AC4E, transparent 70%); }
   *{box-sizing:border-box;}
   html,body{background:var(--bg-base);}
   html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
@@ -125,10 +195,10 @@
   .float-slow{animation:floatKey 5s ease-in-out infinite;}
 
   .glass{
-    background:rgba(255,255,255,0.72);
+    background:var(--glass-bg);
     backdrop-filter:blur(16px) saturate(140%);
     -webkit-backdrop-filter:blur(16px) saturate(140%);
-    border:1px solid var(--border-soft);
+    border:1px solid var(--glass-border);
   }
 
   .num-input::-webkit-outer-spin-button,
@@ -310,9 +380,46 @@
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
   }
+
+  /* ===== Landing page: scroll-reveal system (Framer whileInView / Notion-style fade+rise) ===== */
+  .reveal{
+    opacity:0;
+    transform:translateY(28px);
+    transition:opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    will-change:opacity, transform;
+  }
+  .reveal-visible{ opacity:1; transform:translateY(0); }
+  .reveal-scale{ transform:translateY(20px) scale(0.96); }
+  .reveal-scale.reveal-visible{ transform:translateY(0) scale(1); }
+
+  .landing-nav{
+    transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease;
+  }
+  .landing-feature-card{
+    transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .landing-feature-card:hover{
+    transform:translateY(-6px);
+    border-color:var(--accent-border);
+    box-shadow:0 20px 40px -16px rgba(184,121,10,0.28);
+  }
+  .landing-hero-orb{ position:absolute; border-radius:50%; filter:blur(80px); pointer-events:none; }
+  @keyframes heroFloatA{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(30px,-20px); } }
+  @keyframes heroFloatB{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-24px,26px); } }
+  .landing-mono-figure{ font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
+<script>
+  // Applied synchronously before React mounts, so there's no flash of the
+  // wrong theme while the app boots.
+  try {
+    var savedTheme = localStorage.getItem("ledger_theme");
+    if (savedTheme === "dark" || (!savedTheme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  } catch (e) { /* localStorage unavailable — default to light */ }
+</script>
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react">
@@ -368,6 +475,8 @@ const ICON_PATHS = {
   settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></>,
   paperclip: <><path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></>,
   "refresh-cw": <><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></>,
+  sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></>,
+  moon: <><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></>,
   "external-link": <><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></>,
   crown: <><path d="m2 20 1.5-9L8 15l4-8 4 8 4.5-4L22 20Z"/></>,
   mail: <><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></>,
@@ -1292,7 +1401,7 @@ function DueBadge({ item }) {
   else if (d <= (item.reminderDays ?? 3)) { color = "var(--amber)"; bg = "var(--amber-dim)"; label = d === 0 ? "Due today" : `Due in ${d}d`; }
   else { label = fmtDate(item.dueDate); }
   return (
-    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ color, background: bg, border: `1px solid ${color}33` }}>
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-3 py-1 rounded-full" style={{ color, background: bg, border: `1px solid ${color}33` }}>
       <Icon name="clock" size={11} /> {label}
     </span>
   );
@@ -1338,6 +1447,158 @@ function ReceiptBadge({ receipt }) {
 /* A drop-in button with a material-style click ripple. Used on the highest-
    traffic actions (auth submit, primary "add" CTAs) rather than every button
    in the app, to keep the effect feeling special rather than noisy. */
+/* Floating light/dark toggle. Rendered once at the App root so it's available
+   on every screen — auth flow included, not just inside the dashboard. */
+function ThemeToggle() {
+  const [dark, setDark] = useState(() => document.documentElement.getAttribute("data-theme") === "dark");
+
+  useEffect(() => {
+    const sync = () => setDark(document.documentElement.getAttribute("data-theme") === "dark");
+    window.addEventListener("ledger-theme-change", sync);
+    return () => window.removeEventListener("ledger-theme-change", sync);
+  }, []);
+
+  const toggle = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+    try { localStorage.setItem("ledger_theme", next ? "dark" : "light"); } catch (e) { /* ignore */ }
+    window.dispatchEvent(new Event("ledger-theme-change"));
+  };
+
+  return (
+    <Tooltip label={dark ? "Switch to light mode" : "Switch to dark mode"} position="bottom">
+      <button onClick={toggle}
+        className="icon-btn fixed top-4 right-4 z-[95] w-10 h-10 rounded-full flex items-center justify-center focus-ring"
+        style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", backdropFilter: "blur(10px)", color: "var(--text-primary)" }}
+        aria-label="Toggle dark mode">
+        <Icon name={dark ? "sun" : "moon"} size={17} />
+      </button>
+    </Tooltip>
+  );
+}
+
+/* ============================= SCROLL-REVEAL SYSTEM ============================= */
+// A lightweight stand-in for Framer Motion's `whileInView` / Notion's fade-and-rise
+// section reveals — implemented with a plain IntersectionObserver since this app
+// has no bundler and framer-motion has no consumable UMD build for a bare <script>
+// tag. Same visual result: elements fade and rise into place once, the first time
+// they scroll into view, with an optional stagger delay for grouped children.
+function useInView(options) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setInView(true); obs.disconnect(); }
+    }, { threshold: 0.15, rootMargin: "0px 0px -8% 0px", ...options });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return [ref, inView];
+}
+
+function Reveal({ children, delay = 0, scale = false, className = "", as: Tag = "div" }) {
+  const [ref, inView] = useInView();
+  return (
+    <Tag ref={ref} className={`reveal ${scale ? "reveal-scale" : ""} ${inView ? "reveal-visible" : ""} ${className}`}
+      style={{ transitionDelay: inView ? `${delay}ms` : "0ms" }}>
+      {children}
+    </Tag>
+  );
+}
+
+function useIsStandalone() {
+  const [standalone, setStandalone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(display-mode: standalone)");
+    const check = () => setStandalone(mq.matches || window.navigator.standalone === true);
+    check();
+    mq.addEventListener?.("change", check);
+    return () => mq.removeEventListener?.("change", check);
+  }, []);
+  return standalone;
+}
+
+function InstallInstructionsModal({ onClose }) {
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(20,18,13,0.55)" }} onClick={onClose}>
+      <div className="modal-panel glass w-full sm:max-w-sm p-6 sm:p-7" style={{ background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display text-lg font-semibold">Install Ledger</h2>
+          <button onClick={onClose} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
+        </div>
+        {isIOS ? (
+          <ol className="space-y-3 text-[13px] text-[var(--text-muted)] list-decimal pl-5">
+            <li>Tap the <span className="font-medium text-[var(--text-primary)]">Share</span> icon in Safari's toolbar</li>
+            <li>Scroll down and tap <span className="font-medium text-[var(--text-primary)]">Add to Home Screen</span></li>
+            <li>Tap <span className="font-medium text-[var(--text-primary)]">Add</span> — Ledger opens full-screen, offline, right from your home screen</li>
+          </ol>
+        ) : isAndroid ? (
+          <ol className="space-y-3 text-[13px] text-[var(--text-muted)] list-decimal pl-5">
+            <li>Tap the <span className="font-medium text-[var(--text-primary)]">⋮ menu</span> in Chrome</li>
+            <li>Tap <span className="font-medium text-[var(--text-primary)]">Install app</span> (or "Add to Home screen")</li>
+            <li>Confirm — Ledger now launches like any other app on your phone</li>
+          </ol>
+        ) : (
+          <ol className="space-y-3 text-[13px] text-[var(--text-muted)] list-decimal pl-5">
+            <li>Look for the <span className="font-medium text-[var(--text-primary)]">install icon</span> in your browser's address bar (⊕ or a small monitor icon)</li>
+            <li>Click it, then click <span className="font-medium text-[var(--text-primary)]">Install</span></li>
+            <li>Ledger opens in its own window, with an icon in your dock/taskbar</li>
+          </ol>
+        )}
+        <p className="text-[11px] text-[var(--text-dim)] mt-5 leading-relaxed">
+          Not seeing this option? Installability needs the page served over HTTPS — it won't appear if you're opening this file directly from disk.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function InstallAppButton({ className = "", style, children }) {
+  const [installable, setInstallable] = useState(() => !!window.__deferredInstallPrompt);
+  const [showManual, setShowManual] = useState(false);
+  const standalone = useIsStandalone();
+
+  useEffect(() => {
+    const onInstallable = () => setInstallable(true);
+    const onInstalled = () => setInstallable(false);
+    window.addEventListener("pwa-installable", onInstallable);
+    window.addEventListener("pwa-installed", onInstalled);
+    return () => {
+      window.removeEventListener("pwa-installable", onInstallable);
+      window.removeEventListener("pwa-installed", onInstalled);
+    };
+  }, []);
+
+  if (standalone) return null;
+
+  const handleClick = async () => {
+    const promptEvent = window.__deferredInstallPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      try { await promptEvent.userChoice; } catch (e) { /* ignore */ }
+      window.__deferredInstallPrompt = null;
+      setInstallable(false);
+    } else {
+      setShowManual(true);
+    }
+  };
+
+  return (
+    <>
+      <RippleButton onClick={handleClick} className={className} style={style}>
+        {children || (<><Icon name="download" size={15} /> Install App</>)}
+      </RippleButton>
+      {showManual && <InstallInstructionsModal onClose={() => setShowManual(false)} />}
+    </>
+  );
+}
+
 function RippleButton({ className = "", style, onClick, children, disabled, ...rest }) {
   const [ripples, setRipples] = useState([]);
   const spawn = (e) => {
@@ -1456,7 +1717,7 @@ function ItemCard({ item, rank, accentColor, onOpen, delay }) {
             <div className="flex items-center gap-2">
               <span className="font-display font-semibold text-[15px] truncate">{item.name}</span>
               {rank && (
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full shrink-0"
                   style={{ background: accentColor.dim, color: accentColor.text, border: `1px solid ${accentColor.border}` }}>#{rank}</span>
               )}
             </div>
@@ -1928,8 +2189,8 @@ function ContactsView({ items, onOpenItem }) {
                 </Tooltip>
               </div>
               <div className="flex gap-2 mt-3 text-[12px]">
-                <span className="px-2 py-1 rounded-lg bg-[var(--azure-dim)] text-[var(--azure)] border border-[#DEDBD2]">Owes you {fmtMoney(c.receivableTotal)}</span>
-                <span className="px-2 py-1 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)] border border-[#E4C57C]">You owe {fmtMoney(c.debtTotal)}</span>
+                <span className="px-4 py-1.5 rounded-lg bg-[var(--azure-dim)] text-[var(--azure)] border border-[#DEDBD2]">Owes you {fmtMoney(c.receivableTotal)}</span>
+                <span className="px-4 py-1.5 rounded-lg bg-[var(--amber-dim)] text-[var(--amber)] border border-[#E4C57C]">You owe {fmtMoney(c.debtTotal)}</span>
               </div>
               <div className={`collapse-grid ${isOpen ? "open" : ""}`}>
                 <div className="collapse-inner">
@@ -2193,6 +2454,42 @@ function ChangeCredentialModal({ onClose, onSubmit }) {
   );
 }
 
+function AppearanceCard() {
+  const [dark, setDark] = useState(() => document.documentElement.getAttribute("data-theme") === "dark");
+
+  useEffect(() => {
+    const sync = () => setDark(document.documentElement.getAttribute("data-theme") === "dark");
+    window.addEventListener("ledger-theme-change", sync);
+    return () => window.removeEventListener("ledger-theme-change", sync);
+  }, []);
+
+  const setTheme = (isDark) => {
+    setDark(isDark);
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    try { localStorage.setItem("ledger_theme", isDark ? "dark" : "light"); } catch (e) { /* ignore */ }
+    window.dispatchEvent(new Event("ledger-theme-change"));
+  };
+
+  return (
+    <div className="glass rounded-3xl p-5 sm:p-7">
+      <div className="flex items-center gap-2 mb-5">
+        <Icon name={dark ? "moon" : "sun"} size={17} className="text-[var(--emerald)]" />
+        <h3 className="font-display font-semibold text-lg">Appearance</h3>
+      </div>
+      <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-[var(--surface)] border border-[var(--border-soft)]">
+        <button onClick={() => setTheme(false)} className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-display font-medium transition-all"
+          style={{ background: !dark ? "var(--emerald-dim)" : "transparent", color: !dark ? "var(--emerald)" : "var(--text-muted)", border: !dark ? "1px solid var(--accent-border)" : "1px solid transparent" }}>
+          <Icon name="sun" size={14} /> Light
+        </button>
+        <button onClick={() => setTheme(true)} className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-display font-medium transition-all"
+          style={{ background: dark ? "var(--emerald-dim)" : "transparent", color: dark ? "var(--emerald)" : "var(--text-muted)", border: dark ? "1px solid var(--accent-border)" : "1px solid transparent" }}>
+          <Icon name="moon" size={14} /> Dark
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
   const [name, setName] = useState(data.profile?.name || "");
   const [savedPulse, setSavedPulse] = useState(false);
@@ -2269,6 +2566,9 @@ function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
           This only changes how numbers are <em>displayed</em> — balances aren't converted, so switching currencies doesn't change what you actually owe or are owed.
         </p>
       </div>
+
+      {/* Appearance */}
+      <AppearanceCard />
 
       {/* Security */}
       <div className="glass rounded-3xl p-5 sm:p-7">
@@ -2615,6 +2915,85 @@ function ConfettiBurst() {
   );
 }
 
+/* Surfaces the browser's native "install this app" prompt (captured globally
+   in <head>) as a normal button, and falls back to plain-language instructions
+   on browsers that don't support beforeinstallprompt (iOS Safari, most
+   desktop Safari/Firefox) rather than showing a dead button. */
+function isStandalone() {
+  return window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+}
+function InstallButton({ variant = "icon" }) {
+  const [installable, setInstallable] = useState(() => !!window.__deferredInstallPrompt);
+  const [installed, setInstalled] = useState(() => isStandalone());
+  const [showHelp, setShowHelp] = useState(false);
+
+  useEffect(() => {
+    const onInstallable = () => setInstallable(true);
+    const onInstalled = () => { setInstalled(true); setInstallable(false); };
+    window.addEventListener("pwa-installable", onInstallable);
+    window.addEventListener("pwa-installed", onInstalled);
+    return () => {
+      window.removeEventListener("pwa-installable", onInstallable);
+      window.removeEventListener("pwa-installed", onInstalled);
+    };
+  }, []);
+
+  if (installed) return null;
+
+  const handleClick = async () => {
+    const promptEvent = window.__deferredInstallPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      await promptEvent.userChoice;
+      window.__deferredInstallPrompt = null;
+      setInstallable(false);
+    } else {
+      setShowHelp(true);
+    }
+  };
+
+  return (
+    <>
+      {variant === "icon" ? (
+        <Tooltip label="Install Ledger as an app on this device" position="bottom">
+          <button onClick={handleClick} className="icon-btn h-9 w-9 rounded-xl flex items-center justify-center text-[var(--text-muted)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] focus-ring">
+            <Icon name="download" size={15} />
+          </button>
+        </Tooltip>
+      ) : (
+        <RippleButton onClick={handleClick} className="inline-flex items-center gap-2 h-12 px-6 rounded-2xl font-display font-semibold text-[15px] focus-ring" style={{ background: "var(--emerald)", color: "#211804" }}>
+          <Icon name="download" size={17} /> Install Ledger
+        </RippleButton>
+      )}
+      {showHelp && (
+        <div className="fixed inset-0 z-[95] flex items-end sm:items-center justify-center modal-backdrop p-4" style={{ background: "rgba(20,18,13,0.55)" }} onClick={() => setShowHelp(false)}>
+          <div className="modal-panel glass w-full sm:max-w-sm p-6 sm:p-7" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-semibold">Install Ledger</h2>
+              <button onClick={() => setShowHelp(false)} className="icon-btn w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={17} /></button>
+            </div>
+            <div className="space-y-4 text-[13px] text-[var(--text-muted)] leading-relaxed">
+              <div>
+                <p className="font-semibold text-[var(--text-primary)] mb-1">On iPhone / iPad (Safari)</p>
+                <p>Tap the Share icon, then "Add to Home Screen."</p>
+              </div>
+              <div>
+                <p className="font-semibold text-[var(--text-primary)] mb-1">On Android (Chrome)</p>
+                <p>Tap the ⋮ menu, then "Install app" or "Add to Home screen."</p>
+              </div>
+              <div>
+                <p className="font-semibold text-[var(--text-primary)] mb-1">On desktop (Chrome / Edge)</p>
+                <p>Look for the install icon in the address bar, or open the ⋮ menu and choose "Install Ledger."</p>
+              </div>
+              <p className="text-[11px] text-[var(--text-dim)]">This only works once Ledger is hosted at a real https:// address — a locally opened file can't be installed this way.</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset }) {
   const { items, extraBudget, strategy } = data;
   // Keep the shared money formatter in sync with this account's chosen currency.
@@ -2724,7 +3103,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
     <div className="min-h-screen pb-16 relative z-10">
       <DashboardBackground />
       {celebrating && <ConfettiBurst key={celebrationKey} />}
-      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-[var(--border-soft)]" style={{ background: "rgba(250,249,246,0.82)" }}>
+      <header className="sticky top-0 z-30 backdrop-blur-md border-b border-[var(--border-soft)]" style={{ background: "var(--header-bg)" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-xl bg-[var(--emerald-dim)] border border-[#E4C57C] flex items-center justify-center">
@@ -2748,6 +3127,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
             ))}
           </nav>
           <div className="flex items-center gap-2 shrink-0">
+            <InstallButton variant="icon" />
             <Tooltip label="Import a spreadsheet, export your data, or back it up." position="bottom">
               <button onClick={() => setShowDataPanel(true)} className="icon-btn h-9 w-9 rounded-xl flex items-center justify-center text-[var(--text-muted)] border border-[var(--border-soft)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] focus-ring">
                 <Icon name="cloud" size={15} />
@@ -2868,6 +3248,281 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
 }
 
 /* ============================= ROOT APP ============================= */
+/* ============================= LANDING PAGE ============================= */
+const LANDING_FEATURES = [
+  { icon: "snowflake", title: "Snowball or Avalanche payoff", desc: "Order your debts by smallest balance or highest interest, and watch a visual timeline show exactly when each one hits zero.", accent: "emerald" },
+  { icon: "trending-up", title: "Track who owes you too", desc: "Not just what you owe — log money you've lent out, with full or partial payments and a running balance for each person.", accent: "azure" },
+  { icon: "shield-check", title: "Real local encryption", desc: "AES-GCM encryption, a PIN only you know, an offline backup code, and optional 2FA — all computed on your device, never on a server.", accent: "amber" },
+  { icon: "users", title: "See it all by contact", desc: "One view per person — what they owe you, what you owe them, and the net of it — instead of hunting across separate entries.", accent: "violet" },
+  { icon: "file-spreadsheet", title: "Import & export freely", desc: "Bring in an Excel or CSV file and Ledger sorts it automatically. Export everything back out as CSV or JSON whenever you want.", accent: "emerald" },
+  { icon: "receipt", title: "Attach real receipts", desc: "Snap or upload a photo or PDF against any payment, so the paper trail lives right next to the number.", accent: "azure" },
+  { icon: "bar-chart-3", title: "Statistics that matter", desc: "Net position, total interest, largest balances, and a full payment history — even for debts you've already paid off.", accent: "amber" },
+  { icon: "cloud", title: "Bring your own storage", desc: "Back up your encrypted data to your own Google Drive, Dropbox, or OneDrive — free, with no account required.", accent: "violet" },
+];
+
+const LANDING_ACCENT_MAP = {
+  emerald: { bg: "var(--emerald-dim)", text: "var(--emerald)", border: "var(--accent-border)" },
+  azure: { bg: "var(--azure-dim)", text: "var(--azure)", border: "var(--border)" },
+  amber: { bg: "var(--amber-dim)", text: "var(--amber)", border: "var(--accent-border)" },
+  violet: { bg: "var(--surface-hover)", text: "var(--violet)", border: "var(--border)" },
+};
+
+function LandingStat({ value, label, delay }) {
+  return (
+    <Reveal delay={delay} className="text-center">
+      <div className="landing-mono-figure font-display text-3xl sm:text-4xl font-extrabold" style={{ color: "var(--text-primary)" }}>{value}</div>
+      <div className="text-[12px] uppercase tracking-widest text-[var(--text-dim)] font-medium mt-1">{label}</div>
+    </Reveal>
+  );
+}
+
+function LandingFeatureCard({ feature, delay }) {
+  const a = LANDING_ACCENT_MAP[feature.accent];
+  return (
+    <Reveal delay={delay} scale>
+      <div className="landing-feature-card glass rounded-3xl p-6 sm:p-7 h-full" style={{ background: "var(--surface)" }}>
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5" style={{ background: a.bg, border: `1px solid ${a.border}` }}>
+          <Icon name={feature.icon} size={20} style={{ color: a.text }} />
+        </div>
+        <h3 className="font-display font-bold text-[17px] mb-2" style={{ color: "var(--text-primary)" }}>{feature.title}</h3>
+        <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--text-muted)", fontWeight: 300 }}>{feature.desc}</p>
+      </div>
+    </Reveal>
+  );
+}
+
+function LandingMockPreview() {
+  return (
+    <div className="relative w-full max-w-md mx-auto">
+      <div className="glass rounded-3xl p-5 sm:p-6" style={{ background: "var(--surface)" }}>
+        <div className="flex items-center justify-between mb-5">
+          <span className="font-display font-bold text-sm" style={{ color: "var(--text-primary)" }}>Overview</span>
+          <span className="text-[11px] px-3 py-1 rounded-full" style={{ background: "var(--emerald-dim)", color: "var(--emerald)" }}>Avalanche</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="rounded-2xl p-4" style={{ background: "var(--surface-hover)" }}>
+            <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-dim)" }}>Total remaining</div>
+            <div className="landing-mono-figure font-semibold text-lg" style={{ color: "var(--text-primary)" }}>$8,420</div>
+          </div>
+          <div className="rounded-2xl p-4" style={{ background: "var(--surface-hover)" }}>
+            <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "var(--text-dim)" }}>Freedom date</div>
+            <div className="landing-mono-figure font-semibold text-lg" style={{ color: "var(--text-primary)" }}>Jun 2028</div>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[{ n: "Visa Signature", p: 72 }, { n: "Student Loan", p: 41 }, { n: "Car Loan", p: 18 }].map((row, i) => (
+            <div key={i}>
+              <div className="flex items-center justify-between text-[12px] mb-1.5">
+                <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{row.n}</span>
+                <span style={{ color: "var(--text-dim)" }}>{row.p}% paid</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--border-soft)" }}>
+                <div className="h-full rounded-full" style={{ width: `${row.p}%`, background: "linear-gradient(90deg, var(--accent)88, var(--accent))" }}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="landing-hero-orb" style={{ width: 200, height: 200, background: "radial-gradient(circle, var(--accent), transparent 70%)", opacity: 0.25, top: -40, right: -40, zIndex: -1 }}></div>
+    </div>
+  );
+}
+
+function LandingPage({ onLaunch }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <div className="min-h-screen relative" style={{ background: "var(--bg-vignette)" }}>
+      <ThemeToggle />
+
+      {/* Nav */}
+      <header className="landing-nav sticky top-0 z-40 border-b" style={{
+        background: scrolled ? "var(--header-bg)" : "transparent",
+        borderColor: scrolled ? "var(--border-soft)" : "transparent",
+        backdropFilter: scrolled ? "blur(14px)" : "none",
+      }}>
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--accent)" }}>
+              <Icon name="landmark" size={16} style={{ color: "var(--accent-ink)" }} />
+            </div>
+            <span className="font-display font-extrabold text-[17px] tracking-tight" style={{ color: "var(--text-primary)" }}>Ledger</span>
+          </div>
+          <nav className="hidden md:flex items-center gap-8 text-[13.5px]" style={{ color: "var(--text-muted)" }}>
+            <button onClick={() => scrollTo("landing-features")} className="hover:opacity-70 transition-opacity">Features</button>
+            <button onClick={() => scrollTo("landing-security")} className="hover:opacity-70 transition-opacity">Security</button>
+            <button onClick={() => scrollTo("landing-install")} className="hover:opacity-70 transition-opacity">Install</button>
+          </nav>
+          <RippleButton onClick={onLaunch} className="h-10 px-5 rounded-full font-display font-bold text-[13.5px]" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
+            Open App
+          </RippleButton>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="relative overflow-hidden px-5 sm:px-8 pt-16 pb-20 sm:pt-24 sm:pb-28">
+        <div className="landing-hero-orb" style={{ width: 380, height: 380, background: "var(--accent)", opacity: 0.16, top: -60, left: "5%", animation: "heroFloatA 16s ease-in-out infinite" }}></div>
+        <div className="landing-hero-orb" style={{ width: 320, height: 320, background: "var(--text-primary)", opacity: 0.07, bottom: -80, right: "8%", animation: "heroFloatB 18s ease-in-out infinite" }}></div>
+
+        <div className="max-w-6xl mx-auto relative grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+          <div>
+            <Reveal>
+              <span className="inline-flex items-center gap-2 text-[12px] font-medium px-4 py-1.5 rounded-full mb-6" style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+                <Icon name="lock" size={12} /> 100% offline · no account · no ads
+              </span>
+            </Reveal>
+            <Reveal delay={80}>
+              <h1 className="font-display font-extrabold text-[42px] sm:text-[56px] leading-[1.05] tracking-tight mb-6" style={{ color: "var(--text-primary)" }}>
+                Know exactly<br />what you owe —<br /><span style={{ color: "var(--accent)" }}>and who owes you.</span>
+              </h1>
+            </Reveal>
+            <Reveal delay={160}>
+              <p className="text-[16px] sm:text-[18px] leading-relaxed max-w-md mb-9" style={{ color: "var(--text-muted)", fontWeight: 300 }}>
+                Ledger tracks every debt and receivable, builds you a real payoff plan, and encrypts it all right on your device. No server ever sees your numbers.
+              </p>
+            </Reveal>
+            <Reveal delay={240}>
+              <div className="flex flex-wrap items-center gap-4">
+                <RippleButton onClick={onLaunch} className="px-7 py-3.5 rounded-full font-display font-bold text-[15px] flex items-center gap-2" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
+                  Get Started Free <Icon name="chevron-right" size={16} />
+                </RippleButton>
+                <InstallAppButton className="px-7 py-3.5 rounded-full font-display font-bold text-[15px] flex items-center gap-2" style={{ background: "transparent", border: "1.5px solid var(--border)", color: "var(--text-primary)" }} />
+              </div>
+            </Reveal>
+          </div>
+          <Reveal delay={200} scale>
+            <LandingMockPreview />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Stats band */}
+      <section className="px-5 sm:px-8 py-14 border-y" style={{ borderColor: "var(--border-soft)" }}>
+        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8">
+          <LandingStat value="$0" label="Ever, no subscription" delay={0} />
+          <LandingStat value="256-bit" label="AES-GCM encryption" delay={60} />
+          <LandingStat value="0" label="Servers involved" delay={120} />
+          <LandingStat value="2" label="Payoff strategies built in" delay={180} />
+        </div>
+      </section>
+
+      {/* Features */}
+      <section id="landing-features" className="px-5 sm:px-8 py-20 sm:py-28">
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="max-w-xl mb-14">
+            <span className="text-[12px] uppercase tracking-widest font-semibold" style={{ color: "var(--accent)" }}>Everything in one place</span>
+            <h2 className="font-display font-extrabold text-3xl sm:text-4xl mt-3 tracking-tight" style={{ color: "var(--text-primary)" }}>Built for the whole picture, not just a balance.</h2>
+          </Reveal>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {LANDING_FEATURES.map((f, i) => (
+              <LandingFeatureCard key={f.title} feature={f} delay={(i % 4) * 70} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Security deep-dive */}
+      <section id="landing-security" className="px-5 sm:px-8 py-20 sm:py-28" style={{ background: "var(--surface)" }}>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+          <Reveal>
+            <span className="text-[12px] uppercase tracking-widest font-semibold" style={{ color: "var(--accent)" }}>Security, honestly explained</span>
+            <h2 className="font-display font-extrabold text-3xl sm:text-4xl mt-3 mb-6 tracking-tight" style={{ color: "var(--text-primary)" }}>Your data never leaves your device.</h2>
+            <div className="space-y-5">
+              {[
+                { icon: "key", t: "A PIN only you know", d: "It generates the encryption key locally — Ledger itself never sees or stores it." },
+                { icon: "badge-check", t: "A real backup code", d: "The one honest way back in if you forget your PIN, since there's no server to email you a reset link." },
+                { icon: "alarm-clock", t: "Optional two-factor", d: "Standard TOTP codes, compatible with Google Authenticator, Authy, or 1Password." },
+              ].map((row, i) => (
+                <Reveal key={row.t} delay={i * 80}>
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--amber-dim)" }}>
+                      <Icon name={row.icon} size={17} style={{ color: "var(--accent)" }} />
+                    </div>
+                    <div>
+                      <div className="font-display font-bold text-[15px]" style={{ color: "var(--text-primary)" }}>{row.t}</div>
+                      <div className="text-[13.5px] mt-0.5" style={{ color: "var(--text-muted)", fontWeight: 300 }}>{row.d}</div>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </Reveal>
+          <Reveal delay={120} scale>
+            <div className="glass rounded-3xl p-8 text-center" style={{ background: "var(--bg-vignette)" }}>
+              <Icon name="shield-check" size={48} style={{ color: "var(--accent)" }} className="mx-auto mb-5" />
+              <p className="font-display font-bold text-lg mb-2" style={{ color: "var(--text-primary)" }}>Zero-knowledge, by design</p>
+              <p className="text-[13.5px] max-w-xs mx-auto" style={{ color: "var(--text-muted)", fontWeight: 300 }}>
+                Not a slogan — there's simply no account system or backend to send your data to in the first place.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Install / PWA */}
+      <section id="landing-install" className="px-5 sm:px-8 py-20 sm:py-28">
+        <div className="max-w-4xl mx-auto text-center">
+          <Reveal>
+            <span className="text-[12px] uppercase tracking-widest font-semibold" style={{ color: "var(--accent)" }}>Works like a native app</span>
+            <h2 className="font-display font-extrabold text-3xl sm:text-4xl mt-3 mb-5 tracking-tight" style={{ color: "var(--text-primary)" }}>Install it once. Use it offline, forever.</h2>
+            <p className="text-[15px] max-w-lg mx-auto mb-10" style={{ color: "var(--text-muted)", fontWeight: 300 }}>
+              Add Ledger to your phone's home screen or your computer's dock — it opens full-screen, works without a connection, and never needs an app store.
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+            {[
+              { icon: "download", t: "One tap to install", d: "No app store, no download page — install straight from your browser." },
+              { icon: "wallet", t: "Works fully offline", d: "Your debts, receivables, and history stay available with no signal at all." },
+              { icon: "sparkles", t: "Feels native", d: "Full-screen, its own icon, no browser address bar in the way." },
+            ].map((c, i) => (
+              <Reveal key={c.t} delay={i * 90} scale>
+                <div className="glass rounded-3xl p-6" style={{ background: "var(--surface)" }}>
+                  <Icon name={c.icon} size={22} style={{ color: "var(--accent)" }} className="mx-auto mb-3" />
+                  <div className="font-display font-bold text-sm mb-1.5" style={{ color: "var(--text-primary)" }}>{c.t}</div>
+                  <div className="text-[13px]" style={{ color: "var(--text-muted)", fontWeight: 300 }}>{c.d}</div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal delay={200}>
+            <InstallAppButton className="px-8 py-3.5 rounded-full font-display font-bold text-[15px] inline-flex items-center gap-2" style={{ background: "var(--accent)", color: "var(--accent-ink)" }} />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="px-5 sm:px-8 pb-24">
+        <Reveal scale>
+          <div className="max-w-4xl mx-auto rounded-3xl p-12 sm:p-16 text-center" style={{ background: "var(--text-primary)" }}>
+            <h2 className="font-display font-extrabold text-3xl sm:text-4xl mb-4" style={{ color: "var(--bg-base)" }}>Get the full picture of your money.</h2>
+            <p className="text-[15px] mb-8 max-w-md mx-auto" style={{ color: "var(--bg-base)", opacity: 0.7, fontWeight: 300 }}>Free, private, and yours — set up your first debt in under a minute.</p>
+            <RippleButton onClick={onLaunch} className="px-8 py-3.5 rounded-full font-display font-bold text-[15px] inline-flex items-center gap-2" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
+              Get Started Free <Icon name="chevron-right" size={16} />
+            </RippleButton>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* Footer */}
+      <footer className="px-5 sm:px-8 py-10 border-t" style={{ borderColor: "var(--border-soft)" }}>
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px]" style={{ color: "var(--text-dim)" }}>
+          <span>© {new Date().getFullYear()} Ledger. Runs entirely on your device.</span>
+          <span>No accounts. No ads. No tracking.</span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 function App() {
   const [phase, setPhase] = useState("loading");
   const [error, setError] = useState("");
@@ -2883,20 +3538,25 @@ function App() {
   const pendingTotpSecretRef = useRef(""); // secret awaiting confirmation during 2FA setup
   const forgotDekRef = useRef(null);
   const forgotDataRef = useRef(null);
+  const resolvedAuthPhaseRef = useRef("create"); // where "Open App" / "Get Started" on the landing page leads
 
   useEffect(() => {
     (async () => {
       try {
         const parsed = await loadAuthStore();
-        if (!parsed) { setPhase("create"); return; }
+        if (!parsed) { resolvedAuthPhaseRef.current = "create"; setPhase("landing"); return; }
         storeRef.current = parsed;
-        setPhase("unlock");
+        resolvedAuthPhaseRef.current = "unlock";
+        setPhase("landing");
       } catch (e) {
         setError("This browser doesn't support IndexedDB, which Ledger needs to store your data securely.");
-        setPhase("create");
+        resolvedAuthPhaseRef.current = "create";
+        setPhase("landing");
       }
     })();
   }, []);
+
+  const handleLaunch = () => setPhase(resolvedAuthPhaseRef.current);
 
   const persist = useCallback(async (nextData) => {
     if (!keyRef.current || !storeRef.current) return;
@@ -3127,11 +3787,14 @@ function App() {
 
   const wrapped = (children) => <>
     <AuthBackground />
+    <ThemeToggle />
     {children}
     {showReset && <FactoryResetModal onClose={() => setShowReset(false)} onConfirm={handleFactoryReset} />}
   </>;
 
   switch (phase) {
+    case "landing":
+      return <LandingPage onLaunch={handleLaunch} />;
     case "create":
       return wrapped(<div key="create">
         <CredentialScreen mode="pin" title="Set your Master PIN"
@@ -3189,6 +3852,7 @@ function App() {
       return wrapped(<div key="recovery-reveal-reset"><RecoveryRevealScreen code={recoveryCodeRef.current} note={recoveryNoteRef.current} onContinue={handleRecoveryResetContinue} continueLabel="Continue to Log In" /></div>);
     case "dashboard":
       if (data) return <>
+        <ThemeToggle />
         <Dashboard data={data} saveData={saveData} onLock={handleLock} onChangeCredential={handleChangeCredential} onFactoryReset={() => setShowReset(true)} />
         {showReset && <FactoryResetModal onClose={() => setShowReset(false)} onConfirm={handleFactoryReset} />}
       </>;
