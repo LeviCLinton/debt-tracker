@@ -19,8 +19,8 @@
      without an install prompt or offline caching. -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#B8790A">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAACLElEQVR4nO3cwQ1BQRRAUcTC2kaiGiuFKEEhSlCIlbIstSCu75s4p4CX+fk3bzez3O+2C3jXau4DMDYBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiJZz32AX3e7HKYYezzfpxj7fTYQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASEZ94u56ekwx9nTdTDH2FYN+kQ1EIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZF8+G78oBe8/8pn/5ENRCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERLLc77Zzn4GB2UAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiI5Anb4xADtrxJ0gAAAABJRU5ErkJggg==">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAACLElEQVR4nO3cwQ1BQRRAUcTC2kaiGiuFKEEhSlCIlbIstSCu75s4p4CX+fk3bzez3O+2C3jXau4DMDYBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiJZz32AX3e7HKYYezzfpxj7fTYQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASEZ94u56ekwx9nTdTDH2FYN+kQ1EIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZF8+G78oBe8/8pn/5ENRCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiIREAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERLLc77Zzn4GB2UAkAiIREImASAREIiASAZEIiERAJAIiERCJgEgERCIgEgGRCIhEQCQCIhEQiYBIBEQiIBIBkQiI5Anb4xADtrxJ0gAAAABJRU5ErkJggg==">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Ledger">
@@ -307,6 +307,7 @@
   .collapse-inner{ overflow:hidden; min-height:0; }
 
   .auth-bg-orb{ position:fixed; border-radius:50%; filter:blur(70px); opacity:0.13; pointer-events:none; z-index:0; }
+  .motion-bg-canvas{ position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; display:block; }
   .dash-bg-orb{ position:fixed; border-radius:50%; filter:blur(90px); opacity:0.07; pointer-events:none; z-index:0; }
   .auth-orb-1{ width:440px; height:440px; background:radial-gradient(circle, #D4A552, transparent 70%); top:-140px; left:-120px; animation: driftA 15s ease-in-out infinite; }
   .auth-orb-2{ width:400px; height:400px; background:radial-gradient(circle, #14120D, transparent 70%); bottom:-160px; right:-120px; animation: driftB 17s ease-in-out infinite; }
@@ -370,6 +371,10 @@
 
   /* ===== Design system: single consistent pill radius everywhere (no mixed radii) ===== */
   [class*="rounded-"]{ border-radius:9999px !important; }
+  /* Exception: the assistant chat panel reads as a normal rectangular chat
+     window (like any standard messaging widget), not a pill — deliberately
+     opts out of the site-wide pill radius above by using its own class name. */
+  .assistant-panel-box{ border-radius:14px !important; }
   .avatar{ border-radius:9999px; }
 
   /* ===== Typography: extreme weight contrast instead of color changes ===== */
@@ -466,6 +471,8 @@ const ICON_PATHS = {
   receipt: <><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></>,
   sparkles: <><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><path d="m5.6 5.6 2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></>,
   "user-round": <><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></>,
+  "message-circle": <><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></>,
+  send: <><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
   "minus-circle": <><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></>,
   "plus-circle": <><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></>,
   menu: <><path d="M4 6h16M4 12h16M4 18h16"/></>,
@@ -893,7 +900,7 @@ function toCSV(rows, headers) {
 
 /* ============================= DATA MIGRATION ============================= */
 function migrateData(raw) {
-  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, ...raw };
+  if (raw && raw.items) return { security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, assistant: { apiKey: "", model: "claude-sonnet-5", shareData: false }, ...raw };
   if (raw && raw.debts) {
     const items = raw.debts.map((d) => ({
       id: d.id, type: "debt", name: d.name, contact: "", contactImage: null,
@@ -901,9 +908,9 @@ function migrateData(raw) {
       minPayment: d.minPayment || 0, dueDate: "", reminderDays: 3, notes: "",
       status: "active", createdAt: new Date().toISOString(), settledAt: null, history: [],
     }));
-    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
+    return { items, extraBudget: raw.extraBudget ?? 200, strategy: raw.strategy || "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, assistant: { apiKey: "", model: "claude-sonnet-5", shareData: false } };
   }
-  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" } };
+  return { items: [], extraBudget: 200, strategy: "avalanche", security: { totpEnabled: false, totpSecret: null }, profile: { name: "", email: "" }, settings: { currency: "USD" }, assistant: { apiKey: "", model: "claude-sonnet-5", shareData: false } };
 }
 
 /* ============================= PAYOFF SIMULATION (debts only) ============================= */
@@ -986,16 +993,267 @@ function contactSummaries(items) {
   return [...map.values()].sort((a, b) => (b.debtTotal + b.receivableTotal) - (a.debtTotal + a.receivableTotal));
 }
 
+/* ============================= LEDGER ASSISTANT ============================= */
+// Two tiers, both explicit to the user:
+// - A local, rule-based assistant (default, always on): pattern-matches the
+//   question and answers from the user's own already-decrypted data. Nothing
+//   ever leaves the device for this tier; it's not an LLM, just a
+//   conversational front-end over numbers Ledger already computed.
+// - An optional "Connect your own AI" tier: the person supplies their own
+//   Anthropic API key, which is stored locally (encrypted, same as everything
+//   else) but is used to call api.anthropic.com directly from the browser.
+//   That's a real, disclosed exception to "nothing leaves this device," and
+//   the UI says so plainly before it's ever enabled.
+
+function buildAssistantContext(items, sim, extraBudget, strategy) {
+  const debts = items.filter((i) => i.type === "debt");
+  const receivables = items.filter((i) => i.type === "receivable");
+  const activeDebts = debts.filter((d) => d.status === "active");
+  const activeReceivables = receivables.filter((d) => d.status === "active");
+  const totalDebt = activeDebts.reduce((s, d) => s + d.balance, 0);
+  const totalReceivable = activeReceivables.reduce((s, d) => s + d.balance, 0);
+  const contacts = contactSummaries(items);
+  const topDebt = [...activeDebts].sort((a, b) => b.rate - a.rate)[0];
+  const smallestDebt = [...activeDebts].sort((a, b) => a.balance - b.balance)[0];
+  const dueSoon = items.filter((i) => i.status === "active" && i.dueDate && daysUntil(i.dueDate) <= (i.reminderDays ?? 3) && daysUntil(i.dueDate) >= -30);
+  return { debts, receivables, activeDebts, activeReceivables, totalDebt, totalReceivable, contacts, topDebt, smallestDebt, dueSoon, sim, extraBudget, strategy };
+}
+
+function answerAssistantLocally(query, ctx) {
+  const q = query.toLowerCase();
+  const has = (...words) => words.some((w) => q.includes(w));
+
+  if (has("hi", "hello", "hey", "sup", "yo ")) {
+    return "Hey! I can answer questions about your debts, receivables, and how to use Ledger. Try asking \"how much do I owe?\" or \"when will I be debt-free?\"";
+  }
+  if (has("thank")) return "Anytime.";
+
+  if (has("net position", "net worth", "overall")) {
+    const net = ctx.totalReceivable - ctx.totalDebt;
+    return `Your net position is ${fmtMoney(net)} (${fmtMoney(ctx.totalReceivable)} owed to you minus ${fmtMoney(ctx.totalDebt)} you owe).`;
+  }
+  if (has("how much do i owe", "total debt", "what do i owe", "owe in total")) {
+    return ctx.activeDebts.length
+      ? `You currently owe ${fmtMoney(ctx.totalDebt)} across ${ctx.activeDebts.length} active debt${ctx.activeDebts.length === 1 ? "" : "s"}.`
+      : "You don't have any active debts logged right now.";
+  }
+  if (has("owed to me", "who owes me", "receivable")) {
+    if (!ctx.activeReceivables.length) return "No one owes you anything logged right now.";
+    const top = [...ctx.activeReceivables].sort((a, b) => b.balance - a.balance)[0];
+    return `You're owed ${fmtMoney(ctx.totalReceivable)} total across ${ctx.activeReceivables.length} entr${ctx.activeReceivables.length === 1 ? "y" : "ies"}. The largest is ${top.name}${top.contact ? ` (${top.contact})` : ""} at ${fmtMoney(top.balance)}.`;
+  }
+  if (has("debt free", "debt-free", "freedom date", "when will i")) {
+    if (!ctx.activeDebts.length) return "You have no active debts — you're already debt-free!";
+    return `At your current pace (${ctx.strategy === "snowball" ? "Snowball" : "Avalanche"} strategy, ${fmtMoney(ctx.extraBudget)} extra/month), you're projected debt-free by ${monthsFromNowLabel(ctx.sim.months)} — about ${ctx.sim.months} month${ctx.sim.months === 1 ? "" : "s"} from now.`;
+  }
+  if (has("interest", "highest rate", "apr")) {
+    if (!ctx.topDebt) return "You don't have any active debts to compare interest rates on.";
+    return `Your highest-interest debt is ${ctx.topDebt.name} at ${ctx.topDebt.rate}% APR, with a balance of ${fmtMoney(ctx.topDebt.balance)}. Under the Avalanche method, this is the one extra payments go to first.`;
+  }
+  if (has("smallest balance", "snowball")) {
+    if (has("how", "what is", "what's", "explain")) {
+      return "Debt Snowball orders your debts smallest balance first, regardless of interest rate — you pay minimums on everything else and throw every extra dollar at the smallest one. It's built around quick psychological wins rather than pure math.";
+    }
+    if (!ctx.smallestDebt) return "You don't have any active debts to rank by balance.";
+    return `Your smallest active debt is ${ctx.smallestDebt.name} at ${fmtMoney(ctx.smallestDebt.balance)}. Under Snowball, this is the one extra payments go to first.`;
+  }
+  if (has("avalanche") && has("how", "what is", "what's", "explain")) {
+    return "Debt Avalanche orders your debts by highest interest rate first — mathematically it saves you the most money in total interest, even if it takes longer to see a balance hit zero.";
+  }
+  if (has("due", "reminder", "overdue")) {
+    if (!ctx.dueSoon.length) return "Nothing due soon — you're all caught up.";
+    const names = ctx.dueSoon.slice(0, 3).map((i) => i.name).join(", ");
+    return `You have ${ctx.dueSoon.length} item${ctx.dueSoon.length === 1 ? "" : "s"} due soon: ${names}${ctx.dueSoon.length > 3 ? ", and more" : ""}. Check the Statistics tab for the full list.`;
+  }
+  if (has("import", "spreadsheet", "excel", "csv")) {
+    return "Open the cloud icon in the header → \"Import from a spreadsheet.\" You can download a blank template there too, and Ledger auto-detects name, contact, balance, rate, and due date columns.";
+  }
+  if (has("export", "backup", "drive", "dropbox", "onedrive")) {
+    return "The same cloud icon in the header has export options (CSV or full JSON), and Settings → Bring Your Own Storage lets you back up to your own Google Drive, Dropbox, or OneDrive.";
+  }
+  if (has("2fa", "two-factor", "two factor")) {
+    return "Two-factor authentication uses standard TOTP codes (compatible with Google Authenticator, Authy, 1Password) and can be turned on during setup, or off anytime from Settings → Security.";
+  }
+  if (has("pin", "password") && has("change", "forgot", "reset")) {
+    return "You can change your PIN anytime from Settings → Security → Change. If you're locked out entirely, use \"Forgot your PIN?\" on the login screen — you'll need the backup code you saved at setup.";
+  }
+  if (has("currency")) {
+    return "Settings → Currency lets you switch how amounts are displayed (USD, KES, EUR, and more). It only changes formatting, not actual values — Ledger doesn't do currency conversion.";
+  }
+  if (has("add a debt", "add debt", "new debt", "log a debt")) {
+    return "Go to the \"I Owe\" tab (or Overview) and tap \"Add debt.\" You'll enter a name, balance, interest rate, and minimum payment.";
+  }
+  if (has("add", "receivable") && has("owe", "loan", "money")) {
+    return "Go to the \"Owed to Me\" tab and tap \"Add receivable\" — same fields, just framed as money someone owes you instead.";
+  }
+  if (has("settled", "paid off")) {
+    const settledCount = [...ctx.debts, ...ctx.receivables].filter((i) => i.status === "settled").length;
+    return settledCount
+      ? `You've settled ${settledCount} entr${settledCount === 1 ? "y" : "ies"} so far — you can see them all in the History tab.`
+      : "Nothing's been marked settled yet — once a debt or receivable hits zero, it moves to History automatically.";
+  }
+  if (has("who are you", "what are you", "what can you do", "help")) {
+    return "I'm Ledger's built-in assistant — I run entirely on your device and answer from your own data, no server involved. Ask me things like \"how much do I owe,\" \"when will I be debt-free,\" or \"how do I import a spreadsheet.\"";
+  }
+
+  return null; // signals "no local match" to the caller
+}
+
+const ASSISTANT_FALLBACK = "I'm not sure how to answer that one locally — I can only pattern-match specific questions about your balances, payoff plan, and how to use Ledger (try \"help\" for examples). For open-ended conversation, you can connect your own AI key in the assistant settings.";
+
+async function callAnthropicAPI(apiKey, model, history, systemPrompt) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: history.map((m) => ({ role: m.role, content: m.text })),
+    }),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try { detail = (await res.json()).error?.message || ""; } catch (e) { /* ignore */ }
+    throw new Error(detail || `Request failed (${res.status})`);
+  }
+  const json = await res.json();
+  const block = (json.content || []).find((b) => b.type === "text");
+  return block ? block.text : "(empty response)";
+}
+
 /* ============================= AUTH SCREENS ============================= */
+function MotionBackground() {
+  const canvasRef = useRef(null);
+  const rafRef = useRef(null);
+  const particlesRef = useRef([]);
+  const mouseRef = useRef({ x: -9999, y: -9999 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let width = 0, height = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const isDark = () => document.documentElement.getAttribute("data-theme") === "dark";
+
+    // Kept deliberately sparse and low-opacity — this is a minimalist, premium
+    // app, so the motion should read as "alive" in peripheral vision, not as
+    // a decorative centerpiece competing with real content.
+    const countFor = (w, h) => Math.max(14, Math.min(38, Math.round((w * h) / 42000)));
+
+    const makeParticle = () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.14,
+      vy: (Math.random() - 0.5) * 0.14,
+      r: 1 + Math.random() * 1.5,
+    });
+
+    const resize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const target = countFor(width, height);
+      const arr = particlesRef.current;
+      if (arr.length < target) { while (arr.length < target) arr.push(makeParticle()); }
+      else if (arr.length > target) { arr.length = target; }
+    };
+    resize();
+    let resizeTimer = null;
+    const onResize = () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 150); };
+    window.addEventListener("resize", onResize);
+
+    const onMouseMove = (e) => { mouseRef.current.x = e.clientX; mouseRef.current.y = e.clientY; };
+    const onMouseLeave = () => { mouseRef.current.x = -9999; mouseRef.current.y = -9999; };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseleave", onMouseLeave);
+
+    const LINK_DIST = 130;
+    const MOUSE_RADIUS = 140;
+
+    const tick = () => {
+      const dark = isDark();
+      const dotRGB = dark ? "224,172,78" : "184,121,10";   // --accent, theme-matched
+      const lineRGB = dark ? "224,172,78" : "20,18,13";     // --accent / --text-primary
+      const particles = particlesRef.current;
+      const mouse = mouseRef.current;
+      ctx.clearRect(0, 0, width, height);
+
+      for (const p of particles) {
+        const dx = mouse.x - p.x, dy = mouse.y - p.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < MOUSE_RADIUS * MOUSE_RADIUS) {
+          const d = Math.sqrt(d2) || 1;
+          const pull = (1 - d / MOUSE_RADIUS) * 0.015;
+          p.vx += (dx / d) * pull;
+          p.vy += (dy / d) * pull;
+        }
+        p.vx *= 0.985; p.vy *= 0.985;
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < -10) p.x = width + 10; else if (p.x > width + 10) p.x = -10;
+        if (p.y < -10) p.y = height + 10; else if (p.y > height + 10) p.y = -10;
+      }
+
+      ctx.lineWidth = 1;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i], b = particles[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < LINK_DIST) {
+            const alpha = 0.05 * (1 - dist / LINK_DIST);
+            ctx.strokeStyle = `rgba(${lineRGB},${alpha.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      for (const p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${dotRGB},0.26)`;
+        ctx.fill();
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    const start = () => { if (!rafRef.current) rafRef.current = requestAnimationFrame(tick); };
+    const stop = () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } };
+    const onVisibility = () => { if (document.hidden) stop(); else start(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    start();
+
+    return () => {
+      stop();
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseleave", onMouseLeave);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="motion-bg-canvas" aria-hidden="true"></canvas>;
+}
+
 function AuthBackground() {
-  // Minimalist & Clean intentionally has no decorative gradient blobs —
-  // just quiet, flat space. Kept as a component (rendering nothing) so every
-  // call site that already references it doesn't need to change.
-  return null;
+  return <MotionBackground />;
 }
 
 function DashboardBackground() {
-  return null;
+  return <MotionBackground />;
 }
 
 function PinPad({ onDigit, onBack }) {
@@ -2490,6 +2748,215 @@ function AppearanceCard() {
   );
 }
 
+/* ============================= ASSISTANT PANEL ============================= */
+function AssistantConnectAI({ assistant, saveData, onClose }) {
+  const [apiKey, setApiKey] = useState(assistant.apiKey || "");
+  const [model, setModel] = useState(assistant.model || "claude-sonnet-5");
+  const [showKey, setShowKey] = useState(false);
+  const connected = !!assistant.apiKey;
+
+  const save = () => {
+    saveData((prev) => ({ ...prev, assistant: { ...prev.assistant, apiKey: apiKey.trim(), model } }));
+    onClose();
+  };
+  const disconnect = () => {
+    saveData((prev) => ({ ...prev, assistant: { ...prev.assistant, apiKey: "" } }));
+    setApiKey("");
+    onClose();
+  };
+
+  return (
+    <div className="p-5 sm:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-display font-bold text-[15px]">Connect your own AI</h3>
+        <button onClick={onClose} className="icon-btn w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring"><Icon name="x" size={15} /></button>
+      </div>
+      <p className="text-[12.5px] leading-relaxed mb-4" style={{ color: "var(--text-muted)" }}>
+        Ledger's built-in assistant runs entirely on your device. Connecting your own <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>Anthropic API key</span> instead lets it hold real open-ended conversations — but your messages are then sent directly from your browser to Anthropic's API. That's a genuine exception to "nothing leaves this device," so it's off by default and entirely your call.
+      </p>
+      <p className="text-[11.5px] leading-relaxed mb-5 px-3 py-2.5 rounded-xl" style={{ background: "var(--amber-dim)", color: "var(--text-muted)" }}>
+        Your key is stored encrypted on this device, the same as everything else in Ledger — but it's also sent as a plain request header to Anthropic on every message, visible to anyone with access to this browser's network tools. Consider using a key with a spend limit.
+      </p>
+      <label className="text-[12px] font-medium mb-1.5 block" style={{ color: "var(--text-muted)" }}>Anthropic API key</label>
+      <div className="relative mb-4">
+        <input type={showKey ? "text" : "password"} value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-ant-..."
+          className="w-full bg-[var(--surface-hover)] border border-[var(--border-soft)] rounded-full px-4 py-2.5 pr-11 text-sm font-mono focus-ring" />
+        <button type="button" onClick={() => setShowKey((s) => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2" style={{ color: "var(--text-dim)" }}>
+          <Icon name={showKey ? "eye-off" : "eye"} size={15} />
+        </button>
+      </div>
+      <label className="text-[12px] font-medium mb-1.5 block" style={{ color: "var(--text-muted)" }}>Model</label>
+      <select value={model} onChange={(e) => setModel(e.target.value)}
+        className="styled-select w-full bg-[var(--surface-hover)] border border-[var(--border-soft)] rounded-full px-4 py-2.5 text-sm mb-5 cursor-pointer">
+        <option value="claude-sonnet-5">Claude Sonnet 5 (balanced)</option>
+        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (fastest)</option>
+        <option value="claude-opus-4-8">Claude Opus 4.8 (most capable)</option>
+      </select>
+      <div className="flex gap-3">
+        {connected && (
+          <button onClick={disconnect} className="flex-1 h-11 rounded-full text-sm font-display font-bold" style={{ background: "var(--danger-dim)", color: "var(--danger)" }}>
+            Disconnect
+          </button>
+        )}
+        <RippleButton onClick={save} disabled={!apiKey.trim()} className="flex-1 h-11 rounded-full text-sm font-display font-bold disabled:opacity-40" style={{ background: "var(--accent)", color: "var(--accent-ink)" }}>
+          {connected ? "Update key" : "Connect"}
+        </RippleButton>
+      </div>
+    </div>
+  );
+}
+
+function AssistantMessage({ msg }) {
+  const isUser = msg.role === "user";
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3`}>
+      <div className={`max-w-[85%] px-4 py-2.5 rounded-3xl text-[13.5px] leading-relaxed ${isUser ? "" : ""}`}
+        style={{
+          background: isUser ? "var(--accent)" : "var(--surface-hover)",
+          color: isUser ? "var(--accent-ink)" : "var(--text-primary)",
+          fontWeight: isUser ? 500 : 400,
+        }}>
+        {msg.text}
+      </div>
+    </div>
+  );
+}
+
+const ASSISTANT_SUGGESTIONS = ["How much do I owe?", "When will I be debt-free?", "Who owes me the most?", "How do I import a spreadsheet?"];
+
+function AssistantPanel({ data, saveData, sim, onClose }) {
+  const assistant = data.assistant || { apiKey: "", model: "claude-sonnet-5", shareData: false };
+  const connected = !!assistant.apiKey;
+  const [messages, setMessages] = useState([
+    { role: "assistant", text: connected
+      ? "Hey — I'm connected to your own AI key, so we can chat freely. Ask me anything."
+      : "Hey! I'm Ledger's built-in assistant. I run locally on your device and can answer questions about your balances, payoff plan, and how to use the app." },
+  ]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [error, setError] = useState("");
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, busy]);
+
+  const ctx = useMemo(() => buildAssistantContext(data.items, sim, data.extraBudget, data.strategy), [data.items, sim, data.extraBudget, data.strategy]);
+
+  const toggleShareData = () => {
+    saveData((prev) => ({ ...prev, assistant: { ...prev.assistant, shareData: !prev.assistant?.shareData } }));
+  };
+
+  const send = async (text) => {
+    const trimmed = (text || input).trim();
+    if (!trimmed || busy) return;
+    setInput("");
+    setError("");
+    const nextMessages = [...messages, { role: "user", text: trimmed }];
+    setMessages(nextMessages);
+
+    if (!connected) {
+      const local = answerAssistantLocally(trimmed, ctx);
+      setMessages((m) => [...m, { role: "assistant", text: local || ASSISTANT_FALLBACK }]);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const summary = assistant.shareData
+        ? `The user's Ledger snapshot — total debt: ${fmtMoney(ctx.totalDebt)} across ${ctx.activeDebts.length} debts; total owed to them: ${fmtMoney(ctx.totalReceivable)}; net position: ${fmtMoney(ctx.totalReceivable - ctx.totalDebt)}; strategy: ${ctx.strategy}; projected debt-free: ${monthsFromNowLabel(ctx.sim.months)}. Use this only if relevant.`
+        : "The user has chosen not to share their financial data with you. Answer generally and do not claim to know their specific numbers.";
+      const systemPrompt = `You are a concise, friendly assistant embedded inside Ledger, a personal debt and receivables tracking app. ${summary}`;
+      const reply = await callAnthropicAPI(assistant.apiKey, assistant.model, nextMessages, systemPrompt);
+      setMessages((m) => [...m, { role: "assistant", text: reply }]);
+    } catch (e) {
+      setError(e.message || "Something went wrong reaching the API.");
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="assistant-panel-box fixed bottom-24 right-4 sm:right-8 z-50 w-[calc(100vw-2rem)] sm:w-[380px] max-h-[70vh] flex flex-col overflow-hidden glass anim-in" style={{ background: "var(--surface)" }}>
+      <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border-soft)" }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--accent)" }}>
+            <Icon name="sparkles" size={15} style={{ color: "var(--accent-ink)" }} />
+          </div>
+          <div>
+            <div className="font-display font-bold text-[13.5px]">Ledger Assistant</div>
+            <div className="text-[10.5px]" style={{ color: connected ? "var(--emerald)" : "var(--text-dim)" }}>{connected ? "Connected to your AI key" : "Local · runs on this device"}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setShowSettings((s) => !s)} className="icon-btn w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring" aria-label="Assistant settings">
+            <Icon name="settings" size={15} />
+          </button>
+          <button onClick={onClose} className="icon-btn w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface-hover)] focus-ring" aria-label="Close assistant">
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+      </div>
+
+      {showSettings ? (
+        <div className="overflow-y-auto">
+          <AssistantConnectAI assistant={assistant} saveData={saveData} onClose={() => setShowSettings(false)} />
+          {connected && (
+            <div className="px-5 sm:px-6 pb-5 -mt-2">
+              <label className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl cursor-pointer" style={{ background: "var(--surface-hover)" }}>
+                <span className="text-[12.5px]" style={{ color: "var(--text-primary)" }}>Let the assistant see a summary of my finances</span>
+                <input type="checkbox" checked={!!assistant.shareData} onChange={toggleShareData} className="w-4 h-4 accent-[var(--accent)]" />
+              </label>
+              <p className="text-[11px] mt-2" style={{ color: "var(--text-dim)" }}>Off by default. When on, a numbers-only summary (no names or notes) is sent with each message.</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+            {messages.map((m, i) => <AssistantMessage key={i} msg={m} />)}
+            {busy && <AssistantMessage msg={{ role: "assistant", text: "…" }} />}
+            {error && <p className="text-[11.5px] px-2" style={{ color: "var(--danger)" }}>{error}</p>}
+          </div>
+          {messages.length <= 1 && (
+            <div className="flex flex-wrap gap-2 px-4 pb-3">
+              {ASSISTANT_SUGGESTIONS.map((s) => (
+                <button key={s} onClick={() => send(s)} className="text-[11.5px] px-3 py-1.5 rounded-full" style={{ background: "var(--surface-hover)", color: "var(--text-muted)" }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 px-4 py-3 border-t" style={{ borderColor: "var(--border-soft)" }}>
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+              placeholder={connected ? "Ask anything…" : "Ask about your balances or the app…"} disabled={busy}
+              className="flex-1 bg-[var(--surface-hover)] border border-[var(--border-soft)] rounded-full px-4 py-2.5 text-[13px] focus-ring" />
+            <button onClick={() => send()} disabled={busy || !input.trim()} className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40" style={{ background: "var(--accent)", color: "var(--accent-ink)" }} aria-label="Send">
+              <Icon name="send" size={15} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AssistantLauncher({ data, saveData, sim }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Tooltip label="Ask Ledger's assistant about your finances" position="top">
+        <button onClick={() => setOpen((o) => !o)}
+          className="fixed bottom-6 right-4 sm:right-8 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-lg focus-ring"
+          style={{ background: "var(--accent)", color: "var(--accent-ink)" }} aria-label="Open Ledger Assistant">
+          <Icon name={open ? "x" : "message-circle"} size={22} />
+        </button>
+      </Tooltip>
+      {open && <AssistantPanel data={data} saveData={saveData} sim={sim} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 function SettingsView({ data, saveData, onChangeCredential, onFactoryReset }) {
   const [name, setName] = useState(data.profile?.name || "");
   const [savedPulse, setSavedPulse] = useState(false);
@@ -3243,6 +3710,7 @@ function Dashboard({ data, saveData, onLock, onChangeCredential, onFactoryReset 
         />
       )}
       {showDataPanel && <DataPanel items={items} onClose={() => setShowDataPanel(false)} onImport={handleImportRows} />}
+      <AssistantLauncher data={data} saveData={saveData} sim={sim} />
     </div>
   );
 }
@@ -3600,6 +4068,7 @@ function App() {
       security: { totpEnabled: false, totpSecret: null },
       profile: { name: "" },
       settings: { currency: "USD" },
+      assistant: { apiKey: "", model: "claude-sonnet-5", shareData: false },
     };
     const dataBlob = await encryptJSON(dek, initial);
 
